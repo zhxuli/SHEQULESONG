@@ -58,13 +58,13 @@ pip install -r requirements.txt
 ### 2. 初始化数据库
 ```bash
 # 运行数据库迁移
-python run.py
+python settings.py
 ```
 
 ### 3. 启动服务
 ```bash
 # 启动后端服务
-python main.py
+python run.py
 ```
 
 ### 4. 访问系统
@@ -76,11 +76,6 @@ python main.py
 - 配送管理
 - 站点设置
 （建议添加几张系统实际使用的截图）
-
-## 开发团队
-- 前端开发：[开发者名字]
-- 后端开发：[开发者名字]
-- UI设计：[设计师名字]
 
 ## 贡献指南
 欢迎提交问题和功能建议！如果你想为项目做出贡献，请：
@@ -101,8 +96,7 @@ python main.py
 
 ## 联系方式
 如有任何问题或建议，请通过以下方式联系我们：
-- 项目主页：[GitHub 仓库地址]
-- 电子邮件：[联系邮箱]
+- 项目主页：https://github.com/zhxuli/SHEQULESONG
 
 ## 致谢
 感谢所有为这个项目做出贡献的开发者！ 
