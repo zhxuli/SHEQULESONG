@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>站点管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="/static/css/shop.css?v=1.0.3">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div class="site-container">
+            <!-- 顶部导航 -->
+            <div class="header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <el-button icon="el-icon-back" @click="goBack">返回</el-button>
+                        <span style="margin-left: 20px">{{ siteName }}</span>
+                    </div>
+                    <span class="username-link" @click="refreshData" style="cursor: pointer;">{{ username }}</span>
+                </div>
+            </div>
+
+            <!-- 主要内容区 -->
+            <div class="main-content">
+                <!-- 订单管理 -->
+                <div class="content-section" :class="{ active: activeMenu === 'orders' }">
+                    <div v-if="activeMenu === 'orders'">
+                        <!-- 顶部操作区 -->
+                        <div class="operations-area" style="background: #fff; border-radius: 8px; padding: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);">
+                            <!-- 第一行：操作按钮和统计 -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px;">
+                                <div class="sort-buttons" style="display: flex; gap: 2px; border-radius: 24px; background-color: #f5f7fa; padding: 3px;">
+                                    <el-tooltip content="按时间排序" placement="top">
+                                        <el-button 
+                                            :type="orderSortOption === 'time' ? 'primary' : 'default'"
+                                            circle 
+                                            icon="el-icon-time"
+                                            style="width: 36px; height: 36px; padding: 0; font-size: 18px;"
+                                            @click="orderSortOption = 'time'; handleOrderSortChange()"
+                                        ></el-button>
+                                    </el-tooltip>
+                                    <el-tooltip content="按小区排序" placement="top">
+                                        <el-button 
+                                            :type="orderSortOption === 'community' ? 'primary' : 'default'"
+                                            circle 
+                                            icon="el-icon-location"
+                                            style="width: 36px; height: 36px; padding: 0; font-size: 18px;"
+                                            @click="orderSortOption = 'community'; handleOrderSortChange()"
+                                        ></el-button>
+                                    </el-tooltip>
+                                </div>
+
+                                <div class="today-stats" 
+                                style="flex: 1; display: flex; align-items: center; background-color: #f5f7fa; border-radius: 20px; padding: 0 12px; height: 42px; margin: 0 8px;" 
+                                @click="fetchItemStats"
+                                >
+                                    <div style="display: flex; align-items: center; width: 100%; min-width: 0;">
+                                        <i class="el-icon-data-line" style="font-size: 18px; margin-right: 8px; flex-shrink: 0;"></i>
+                                        <div style="display: flex; align-items: center; justify-content: center; gap: 16px; flex: 1; min-width: 0;">
+                                            <div style="font-size: 15px; font-weight: 500; color: #303133; white-space: nowrap;">{{ todayStats.totalOrders }}单</div>
+                                            <div style="width: 1px; height: 16px; background-color: #dcdfe6;"></div>
+                                            <div style="font-size: 15px; font-weight: 500; color: #303133; white-space: nowrap;">{{ todayStats.totalAmount }}元</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <el-tooltip content="新建订单" placement="top">
+                                    <el-button 
+                                        type="primary" 
+                                        circle 
+                                        icon="el-icon-plus"
+                                        style="width: 36px; height: 36px; padding: 0; font-size: 18px;"
+                                        @click="showCreateOrderDialog"
+                                    ></el-button>
+                                </el-tooltip>
+                            </div>
+
+                            <!-- 第二行：筛选器 -->
+                            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                                <el-select 
+                                    v-model="menuItemFilter" 
+                                    placeholder="选择菜品筛选" 
+                                    clearable 
+                                    @change="handleMenuItemFilterChange"
+                                    style="flex: 1;"
+                                    size="mini"
+                                >
+                                    <el-option label="全部菜品" value=""></el-option>
+                                    <el-option
+                                        v-for="item in menuItems"
+                                        :key="item.id"
+                                        :label="item.name"
+                                        :value="item.id"
+                                    >
+                                        <span>{{ item.name }}</span>
+                                        <span v-if="getMenuItemCount(item.id) && getMenuItemCount(item.id).count > 0" style="float: right; color: #8492a6;">
+                                            x{{ getMenuItemCount(item.id).count }}
+                                        </span>
+                                    </el-option>
+                                </el-select>
+                                <el-select 
+                                    v-model="communityFilter" 
+                                    placeholder="选择小区筛选" 
+                                    clearable 
+                                    @change="handleCommunityFilterChange"
+                                    style="flex: 1;"
+                                    size="mini"
+                                >
+                                    <el-option label="全部小区" value=""></el-option>
+                                    <el-option
+                                        v-for="community in communities"
+                                        :key="community.id"
+                                        :label="community.name"
+                                        :value="community.id"
+                                    >
+                                        {{ community.name }}
+                                    </el-option>
+                                </el-select>
+                            </div>
+
+                            <!-- 第三行：状态过滤器 -->
+                            <el-radio-group v-model="orderStatusFilter" @change="handleStatusFilterChange" size="mini" style="width: 100%; display: flex;">
+                                <el-radio-button label="all" style="flex: 1; text-align: center;">全部 {{orderCounts.all}}</el-radio-button>
+                                <el-radio-button label="ordered" style="flex: 1; text-align: center;">待派送 {{orderCounts.ordered}}</el-radio-button>
+                                <el-radio-button label="delivering" style="flex: 1; text-align: center;">派送中 {{orderCounts.delivering}}</el-radio-button>
+                                <el-radio-button label="completed" style="flex: 1; text-align: center;">已送达 {{orderCounts.completed}}</el-radio-button>
+                            </el-radio-group>
+                        </div>
+
+                        <!-- 订单列表 -->
+                        <div class="order-list" style="margin-top: 12px;">
+                            <div v-for="order in paginatedOrders" :key="order.id" class="order-card">
+                                <div class="order-header">
+                                    <div class="address-text">{{order.building?.community_name}} {{order.building?.name}} {{order.room_number}}</div>
+                                    <el-tag :type="getOrderStatusType(order.status)" size="small">
+                                        <span v-if="order.deliverer">{{order.deliverer}}</span>
+                                        {{getOrderStatusText(order.status)}} 
+                                    </el-tag>
+                                </div>
+                                <div class="order-info">
+                                    <div class="info-row" v-if="order.customer_name || order.customer_phone">
+                                        <span class="label">客户信息:</span>
+                                        <span>
+                                            <template v-if="order.customer_name">{{order.customer_name}}</template>
+                                            <template v-if="order.customer_name && order.customer_phone"> - </template>
+                                            <template v-if="order.customer_phone">{{order.customer_phone}}</template>
+                                        </span>
+                                    </div>
+                                    <div class="info-row" v-if="order.delivery_time">
+                                        <span class="label">预约时间:</span>
+                                        <span>{{formatDate(order.delivery_time)}}</span>
+                                    </div>
+                                    <div class="info-row" v-if="order.note">
+                                        <span class="label">备注:</span>
+                                        <span class="note-text" v-html="order.note.replace(/(加热|热)/g, '<span class=\'heat-text\'>$1</span>')"></span>
+                                    </div>
+                                    <div class="order-items">
+                                        <div v-for="item in order.items" :key="item.id" class="order-item">
+                                            <span class="item-name">{{ item.menu_item?.name || '未知商品' }}</span>
+                                            <span class="item-quantity">x{{ item.quantity }}</span>
+                                            <div v-if="item.selected_options && item.selected_options.length" class="item-options">
+                                                {{ item.selected_options.map(opt => opt.name).join(', ') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="info-row">
+                                        <span :style="{ color: order.is_paid ? 'black' : 'red' }">
+                                            {{ order.is_paid ? '已付款' : '未付款' }}: ¥{{ calculateOrderTotal(order) }}
+                                        </span>
+                                        
+                                    </div>
+                                </div>
+                                <div class="operation-group order-group">
+                                    <el-button 
+                                        v-if="order.status === 'ordered'"
+                                        type="success"
+                                        size="small"
+                                        @click="startSingleDelivery(order)"
+                                    >
+                                        去派送
+                                    </el-button>
+                                    <el-button 
+                                        type="primary"
+                                        size="small"
+                                        @click="editOrder(order)"
+                                    >
+                                        编辑
+                                    </el-button>
+                                    <el-button 
+                                        v-if="order.status === 'delivering' && order.deliverer === username"
+                                        type="success"
+                                        size="small"
+                                        @click="completeOrder(order)"
+                                    >
+                                        已送达
+                                    </el-button>
+                                    <el-button 
+                                        v-if="order.status === 'delivering' && order.deliverer === username"
+                                        type="warning"
+                                        size="small"
+                                        @click="cancelDelivery(order)"
+                                    >
+                                        取消派送
+                                    </el-button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 分页组件 -->
+                        <div class="mobile-pagination">
+                            <div class="page-info">
+                                <span>共 {{filteredOrders.totalOrders}} 条</span>
+                                <select v-model="pageSize" @change="handleSizeChange($event.target.value)">
+                                    <option :value="20">20条/页</option>
+                                    <option :value="50">50条/页</option>
+                                    <option :value="100">100条/页</option>
+                                    <option :value="200">200条/页</option>
+                                    <option :value="500">500条/页</option>
+                                    <option :value="1000">1000条/页</option>
+                                    <option :value="2000">2000条/页</option>
+                                </select>
+                            </div>
+                            <div class="page-nav">
+                                <button 
+                                    :disabled="currentPage === 1"
+                                    @click="handlePageChange(currentPage - 1)"
+                                >上一页</button>
+                                <span>{{currentPage}} / {{totalOrders}}</span>
+                                <button 
+                                    :disabled="currentPage >= totalOrders"
+                                    @click="handlePageChange(currentPage + 1)"
+                                >下一页</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 派送内容部分 -->
+                <div class="content-section" :class="{ active: activeMenu === 'delivery' }">
+                    <div v-if="activeMenu === 'delivery'">
+                        <div class="delivery-tabs" style="position: relative; margin-bottom: 20px;">
+                            <div class="tab-list" style="display: flex; border-bottom: 1px solid #DCDFE6; position: relative;">
+                                <div 
+                                    v-for="tab in [{label: '全部', value: 'all'}, {label: '派送中', value: 'delivering'}, {label: '已送达', value: 'completed'}]"
+                                    :key="tab.value"
+                                    class="tab-item"
+                                    :class="{ active: deliveryStatusFilter === tab.value }"
+                                    @click="deliveryStatusFilter = tab.value; handleDeliveryStatusFilterChange()"
+                                    style="padding: 12px 24px; cursor: pointer; font-size: 14px; color: #606266; position: relative; text-align: center; flex: 1;"
+                                >
+                                    {{ tab.label }}
+                                </div>
+                                <div 
+                                    class="active-line" 
+                                    style="position: absolute; bottom: -1px; height: 2px; background-color: #409EFF; transition: all 0.3s;"
+                                    :style="{
+                                        left: deliveryStatusFilter === 'all' ? '0' : deliveryStatusFilter === 'delivering' ? '33.33%' : '66.66%',
+                                        width: '33.33%'
+                                    }"
+                                ></div>
+                            </div>
+                        </div>
+
+                        <div class="delivery-list">
+                            <div v-for="order in filteredDeliveries" :key="order.id" class="delivery-card" style="background: white; padding: 15px; margin-bottom: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <div class="order-header">
+                                    <div class="address-text">{{order.building?.community_name}} {{order.building?.name}} {{order.room_number}}</div>
+                                    <el-tag :type="getOrderStatusType(order.status)" size="small">
+                                        {{getOrderStatusText(order.status)}}
+                                    </el-tag>
+                                </div>
+                                <div class="order-items">
+                                    <div v-for="item in order.items" :key="item.id" class="order-item">
+                                        <span class="item-name">{{ item.menu_item?.name }}</span>
+                                        <span class="item-quantity">x{{ item.quantity }}</span>
+                                    </div>
+                                </div>
+                                <div class="operation-group" v-if="order.status === 'delivering'">
+                                    <el-button type="success" size="mini" @click="completeOrder(order)">已送达</el-button>
+                                    <el-button type="warning" size="mini" @click="cancelDelivery(order)">取消派送</el-button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 员工管理 -->
+                <div class="content-section" :class="{ active: activeMenu === 'staff' }">
+                    <div v-if="activeMenu === 'staff'">
+                        <div class="button-group">
+                            <el-button type="primary" class="mobile-btn" @click="showAddStaffDialog">添加员工</el-button>
+                        </div>
+                        
+                        <div class="staff-list">
+                            <el-card v-for="staff in staffList" :key="staff.id" class="staff-card">
+                                <div class="staff-info">
+                                    <div class="staff-name">{{ staff.username }}</div>
+                                    <div class="staff-permissions">
+                                        <el-tag 
+                                            v-for="perm in staff.permissions" 
+                                            :key="perm"
+                                            size="small"
+                                            style="margin: 2px"
+                                        >
+                                            {{ permissionLabels[perm] || perm }}
+                                        </el-tag>
+                                    </div>
+                                    <div class="operation-group">
+                                        <el-button 
+                                            type="primary"
+                                            size="small"
+                                            @click="showEditPermissionsDialog(staff)"
+                                            v-if="isAdmin || hasPermission('EDIT_PERMISSIONS')"
+                                        >
+                                            编辑权限
+                                        </el-button>
+                                        <el-button 
+                                            type="danger"
+                                            size="small"
+                                            @click="removeStaff(staff)"
+                                            v-if="isAdmin || hasPermission('REMOVE_STAFF')"
+                                        >
+                                            移除
+                                        </el-button>
+                                    </div>
+                                </div>
+                            </el-card>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 站点设置 -->
+                <div class="content-section" :class="{ active: activeMenu === 'settings' }">
+                    <div v-if="activeMenu === 'settings'">
+                        <el-form :model="siteSettings" label-width="100px">
+                            <el-form-item label="站点名称">
+                                <el-input v-model="siteSettings.name"></el-input>
+                            </el-form-item>
+                            <el-form-item label="地址">
+                                <el-input v-model="siteSettings.address"></el-input>
+                            </el-form-item>
+                            <el-form-item label="联系电话">
+                                <el-input v-model="siteSettings.phone"></el-input>
+                            </el-form-item>
+                            <el-form-item label="微信号">
+                                <el-input v-model="siteSettings.wechat"></el-input>
+                            </el-form-item>
+                            <el-form-item label="站点简介">
+                                <el-input type="textarea" v-model="siteSettings.description" :rows="4"></el-input>
+                            </el-form-item>
+                            <el-form-item label="营业时间">
+                                <el-input v-model="siteSettings.business_hours" placeholder="例如：09:00-22:00"></el-input>
+                            </el-form-item>
+                            <el-form-item label="营业状态">
+                                <el-switch
+                                    v-model="siteSettings.is_open"
+                                    active-text="营业中"
+                                    inactive-text="已打烊"
+                                ></el-switch>
+                            </el-form-item>
+                            <el-form-item>
+                                <el-button type="primary" @click="updateSiteSettings">保存设置</el-button>
+                            </el-form-item>
+                        </el-form>
+                    </div>
+                </div>
+
+                <!-- 地址管理 -->
+                <div class="content-section" :class="{ active: activeMenu === 'communities' }">
+                    <div v-if="activeMenu === 'communities'">
+                        <div class="button-group" v-if="canManageAddress()">
+                            <el-button type="primary" class="mobile-btn" @click="showAddCommunityDialog">
+                                <i class="el-icon-plus"></i> 添加小区
+                            </el-button>
+                        </div>
+                        
+                        <div class="community-list">
+                            <el-card v-for="community in communities" :key="community.id" class="community-card">
+                                <div class="community-info">
+                                    <div class="community-header">
+                                        <span class="community-name">{{ community.name }}</span>
+                                        <div v-if="canManageAddress()" class="community-actions">
+                                            <el-button type="text" @click="showEditCommunityDialog(community)">
+                                                编辑
+                                            </el-button>
+                                            <el-button type="text" class="danger-text" @click="deleteCommunity(community)">
+                                                删除
+                                            </el-button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="community-address">
+                                        地址：{{ community.address }}
+                                    </div>
+                                    
+                                    <div class="community-note" v-if="community.note">
+                                        备注：{{ community.note }}
+                                    </div>
+                                    
+                                    <div class="building-section">
+                                        <div class="building-header">
+                                            <span class="section-title">楼栋列表</span>
+                                            <el-button 
+                                                v-if="canManageAddress()" 
+                                                type="text" 
+                                                @click="showAddBuildingDialog(community)"
+                                            >
+                                                <i class="el-icon-plus"></i> 添加楼栋
+                                            </el-button>
+                                        </div>
+                                        
+                                        <div class="building-list">
+                                            <div v-for="building in community.buildings" :key="building.id" class="building-item">
+                                                <div class="building-info">
+                                                    <span class="building-name">{{ building.name }}</span>
+                                                    <span class="building-note" v-if="building.note">{{ building.note }}</span>
+                                                </div>
+                                                <div v-if="canManageAddress()" class="building-actions">
+                                                    <el-button type="text" size="small" @click="showEditBuildingDialog(community, building)">
+                                                        编辑
+                                                    </el-button>
+                                                    <el-button type="text" size="small" class="danger-text" @click="deleteBuilding(community, building)">
+                                                        删除
+                                                    </el-button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </el-card>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 菜单管理 -->
+                <div class="content-section" :class="{ active: activeMenu === 'menu' }">
+                    <div v-if="activeMenu === 'menu'">
+                        <div class="button-group">
+                            <el-button type="primary" class="mobile-btn" @click="showAddMenuItemDialog">添加菜品</el-button>
+                        </div>
+                        
+                        <div class="menu-list">
+                            <el-card v-for="item in menuItems" :key="item.id" class="menu-card">
+                                <div class="menu-info">
+                                    <div class="menu-header">
+                                        <span class="menu-name">{{ item.name }}</span>
+                                        <span class="menu-price">¥{{ item.price }}</span>
+                                    </div>
+                                    
+                                    <div class="menu-description" v-if="item.description">
+                                        {{ item.description }}
+                                    </div>
+                                    
+                                    <div class="menu-note" v-if="item.note">
+                                        备注：{{ item.note }}
+                                    </div>
+                                    
+                                    <div class="menu-options" v-if="item.options && item.options.length">
+                                        <div class="options-title">可选项：</div>
+                                        <el-tag 
+                                            v-for="option in item.options" 
+                                            :key="option.id"
+                                            :type="option.is_available ? 'success' : 'info'"
+                                            size="small"
+                                            style="margin: 2px"
+                                        >
+                                            {{ option.name }} (+{{ option.price }})
+                                        </el-tag>
+                                    </div>
+                                    
+                                    <!-- <div class="menu-status">
+                                        <el-tag :type="item.is_available ? 'success' : 'info'">
+                                            {{ item.is_available ? '上架中' : '已下架' }}
+                                        </el-tag>
+                                    </div> -->
+                                    
+                                    <div class="operation-group">
+                                        <el-button 
+                                            type="primary"
+                                            size="small"
+                                            @click="showEditMenuItemDialog(item)"
+                                        >
+                                            编辑
+                                        </el-button>
+                                        <el-button 
+                                            type="danger"
+                                            size="small"
+                                            @click="deleteMenuItem(item)"
+                                        >
+                                            删除
+                                        </el-button>
+                                    </div>
+                                </div>
+                            </el-card>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部导航栏 -->
+            <div class="bottom-nav">
+                <div class="nav-item" 
+                    :class="{ active: activeMenu === 'orders' }" 
+                    @click="handleSelect('orders')"
+                    v-if="isAdmin || hasPermission('ORDER_MANAGE')"
+                >
+                    <i class="el-icon-document"></i>
+                    <span>订单</span>
+                </div>
+                <div class="nav-item" 
+                    :class="{ active: activeMenu === 'delivery' }" 
+                    @click="handleSelect('delivery')"
+                    v-if="isAdmin || hasPermission('DELIVERY')"
+                >
+                    <i class="el-icon-truck"></i>
+                    <span>派送</span>
+                </div>
+                <div class="nav-item" 
+                    :class="{ active: activeMenu === 'staff' }" 
+                    @click="handleSelect('staff')"
+                    v-if="isAdmin"
+                >
+                    <i class="el-icon-user"></i>
+                    <span>员工</span>
+                </div>
+                <div class="nav-item" 
+                    :class="{ active: activeMenu === 'communities' }" 
+                    @click="handleSelect('communities')"
+                    v-if="isAdmin || hasPermission('ADDRESS_MANAGE')"
+                >
+                    <i class="el-icon-location"></i>
+                    <span>地址</span>
+                </div>
+                <div class="nav-item" 
+                    :class="{ active: activeMenu === 'menu' }" 
+                    @click="handleSelect('menu')"
+                    v-if="isAdmin || hasPermission('MENU_MANAGE')"
+                >
+                    <i class="el-icon-food"></i>
+                    <span>菜单</span>
+                </div>
+                <div class="nav-item" 
+                    :class="{ active: activeMenu === 'settings' }" 
+                    @click="handleSelect('settings')"
+                    v-if="isAdmin"
+                >
+                    <i class="el-icon-setting"></i>
+                    <span>设置</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 保持原有的所有对话框不变 -->
+        <!-- ... existing code ... -->
+
+        <!-- 添加员工对话框 -->
+        <div class="modal-overlay" v-if="addStaffDialogVisible" @click.self="addStaffDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">添加员工</h3>
+                    <button class="modal-close" @click="addStaffDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="staffForm" label-width="100px">
+                        <el-form-item label="用户名">
+                            <el-input v-model="staffForm.username" placeholder="请输入用户名"></el-input>
+                        </el-form-item>
+                        <el-form-item label="权限">
+                            <el-checkbox-group v-model="staffForm.permissions">
+                                <el-checkbox label="ORDER">接单权限</el-checkbox>
+                                <el-checkbox label="DELIVERY">配送权限</el-checkbox>
+                                <el-checkbox label="ORDER_MANAGE">订单管理权限</el-checkbox>
+                                <el-checkbox label="MENU_MANAGE">菜单管理权限</el-checkbox>
+                                <el-checkbox label="ADDRESS_MANAGE">地址管理权限</el-checkbox>
+                            </el-checkbox-group>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="addStaffDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="addStaff">确定</el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑权限对话框 -->
+        <div class="modal-overlay" v-if="editPermissionsDialogVisible" @click.self="editPermissionsDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">编辑权限</h3>
+                    <button class="modal-close" @click="editPermissionsDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="editPermissionsForm" label-width="100px">
+                        <el-form-item label="权限">
+                            <el-checkbox-group v-model="editPermissionsForm.permissions">
+                                <el-checkbox label="ORDER">接单权限</el-checkbox>
+                                <el-checkbox label="DELIVERY">配送权限</el-checkbox>
+                                <el-checkbox label="ORDER_MANAGE">订单管理权限</el-checkbox>
+                                <el-checkbox label="MENU_MANAGE">菜单管理权限</el-checkbox>
+                                <el-checkbox label="ADDRESS_MANAGE">地址管理权限</el-checkbox>
+                            </el-checkbox-group>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="editPermissionsDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="updatePermissions">确定</el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加小区对话框 -->
+        <div class="modal-overlay" v-if="addCommunityDialogVisible" @click.self="addCommunityDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">添加小区</h3>
+                    <button class="modal-close" @click="addCommunityDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="communityForm" label-width="80px">
+                        <el-form-item label="小区名称">
+                            <el-input v-model="communityForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="地址">
+                            <el-input v-model="communityForm.address"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="communityForm.note"></el-input>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="addCommunityDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="createCommunity">确定</el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑小区对话框 -->
+        <div class="modal-overlay" v-if="editCommunityDialogVisible" @click.self="editCommunityDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">编辑小区</h3>
+                    <button class="modal-close" @click="editCommunityDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="editCommunityForm" label-width="80px">
+                        <el-form-item label="小区名称">
+                            <el-input v-model="editCommunityForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="地址">
+                            <el-input v-model="editCommunityForm.address"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="editCommunityForm.note"></el-input>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="editCommunityDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="updateCommunity">确定</el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加楼栋对话框 -->
+        <div class="modal-overlay" v-if="addBuildingDialogVisible" @click.self="addBuildingDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">添加楼栋</h3>
+                    <button class="modal-close" @click="addBuildingDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="buildingForm" label-width="100px">
+                        <el-tabs v-model="buildingAddMode">
+                            <el-tab-pane label="单个添加" name="single">
+                                <el-form-item label="楼栋名称">
+                                    <el-input v-model="buildingForm.name"></el-input>
+                                </el-form-item>
+                                <el-form-item label="备注">
+                                    <el-input type="textarea" v-model="buildingForm.note"></el-input>
+                                </el-form-item>
+                            </el-tab-pane>
+                            <el-tab-pane label="批量添加" name="batch">
+                                <el-form-item label="前缀">
+                                    <el-input v-model="buildingForm.prefix" placeholder="例如：'幢'"></el-input>
+                                </el-form-item>
+                                <el-form-item label="起始编号">
+                                    <el-input-number v-model="buildingForm.startNum" :min="1"></el-input-number>
+                                </el-form-item>
+                                <el-form-item label="结束编号">
+                                    <el-input-number v-model="buildingForm.endNum" :min="1"></el-input-number>
+                                </el-form-item>
+                            </el-tab-pane>
+                        </el-tabs>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="addBuildingDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="createBuilding">确定</el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑楼栋对话框 -->
+        <div class="modal-overlay" v-if="editBuildingDialogVisible" @click.self="editBuildingDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">编辑楼栋</h3>
+                    <button class="modal-close" @click="editBuildingDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="editBuildingForm" label-width="100px">
+                        <el-form-item label="楼栋名称">
+                            <el-input v-model="editBuildingForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="editBuildingForm.note"></el-input>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="editBuildingDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="updateBuilding">确定</el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加菜品对话框 -->
+        <div class="modal-overlay" v-if="addMenuItemDialogVisible" @click.self="addMenuItemDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">添加菜品</h3>
+                    <button class="modal-close" @click="addMenuItemDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="menuItemForm" label-width="80px">
+                        <el-form-item label="菜品名称">
+                            <el-input v-model="menuItemForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="价格">
+                            <el-input-number v-model="menuItemForm.price" :precision="1" :step="1"></el-input-number>
+                        </el-form-item>
+                        <el-form-item label="描述">
+                            <el-input type="textarea" v-model="menuItemForm.description"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="menuItemForm.note"></el-input>
+                        </el-form-item>
+                        <el-form-item label="可选项">
+                            <div v-for="(option, index) in menuItemForm.options" :key="index" class="option-item">
+                                <div class="option-header">
+                                    <span class="option-index">选项 {{ index + 1 }}</span>
+                                    <el-button type="danger" size="mini" icon="el-icon-delete" circle @click="removeOption(index)"></el-button>
+                                </div>
+                                <el-form-item label="名称">
+                                    <el-input v-model="option.name" placeholder="请输入选项名称"></el-input>
+                                </el-form-item>
+                                <el-form-item label="价格">
+                                    <el-input-number v-model="option.price" :precision="1" :step="1" placeholder="加价金额"></el-input-number>
+                                </el-form-item>
+                                <el-form-item label="描述">
+                                    <el-input v-model="option.description" placeholder="选项描述（可选）"></el-input>
+                                </el-form-item>
+                            </div>
+                            <div class="add-option-btn">
+                                <el-button type="primary" plain icon="el-icon-plus" @click="addOption">添加可选项</el-button>
+                            </div>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="addMenuItemDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="createMenuItem">确定</el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑菜品对话框 -->
+        <div class="modal-overlay" v-if="editMenuItemDialogVisible" @click.self="editMenuItemDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">编辑菜品</h3>
+                    <button class="modal-close" @click="editMenuItemDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="editMenuItemForm" label-width="80px">
+                        <el-form-item label="菜品名称">
+                            <el-input v-model="editMenuItemForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="价格">
+                            <el-input-number v-model="editMenuItemForm.price" :precision="1" :step="1"></el-input-number>
+                        </el-form-item>
+                        <el-form-item label="描述">
+                            <el-input type="textarea" v-model="editMenuItemForm.description"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="editMenuItemForm.note"></el-input>
+                        </el-form-item>
+                        <el-form-item label="可选项">
+                            <div v-for="(option, index) in editMenuItemForm.options" :key="index" class="option-item">
+                                <div class="option-header">
+                                    <span class="option-index">选项 {{ index + 1 }}</span>
+                                    <el-button type="danger" size="mini" icon="el-icon-delete" circle @click="removeEditOption(index)"></el-button>
+                                </div>
+                                <el-form-item label="名称">
+                                    <el-input v-model="option.name" placeholder="请输入选项名称"></el-input>
+                                </el-form-item>
+                                <el-form-item label="价格">
+                                    <el-input-number v-model="option.price" :precision="1" :step="1" placeholder="加价金额"></el-input-number>
+                                </el-form-item>
+                                <el-form-item label="描述">
+                                    <el-input v-model="option.description" placeholder="选项描述（可选）"></el-input>
+                                </el-form-item>
+                            </div>
+                            <div class="add-option-btn">
+                                <el-button type="primary" plain icon="el-icon-plus" @click="addEditOption">添加可选项</el-button>
+                            </div>
+                        </el-form-item>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="editMenuItemDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="updateMenuItem">确定</el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新建订单对话框 -->
+        <div class="modal-overlay" v-if="createOrderDialogVisible" @click.self="createOrderDialogVisible = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">{{ orderForm.id ? '编辑订单' : '新建订单' }}</h3>
+                    <button class="modal-close" @click="createOrderDialogVisible = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <el-form :model="orderForm" label-width="80px">
+                        <!-- 客户信息 -->
+                        <div class="form-section">
+                            <div class="section-title">客户信息</div>
+                            <!-- <el-form-item label="姓名">
+                                <el-input v-model="orderForm.customer_name" placeholder="请输入客户姓名"></el-input>
+                            </el-form-item>
+                            <el-form-item label="电话">
+                                <el-input v-model="orderForm.customer_phone" placeholder="请输入联系电"></el-input>
+                            </el-form-item> -->
+                            <el-form-item label="地址">
+                                <el-cascader
+                                    v-model="orderForm.building_id"
+                                    :options="addressOptions"
+                                    :props="{
+                                        value: 'id',
+                                        label: 'name',
+                                        children: 'buildings'
+                                    }"
+                                    placeholder="请选择小区和楼栋"
+                                ></el-cascader>
+                            </el-form-item>
+                            <el-form-item label="房号">
+                                <el-input v-model="orderForm.room_number" placeholder="请输入房号"></el-input>
+                            </el-form-item>
+                            <el-form-item label="预约时间">
+                                <el-date-picker
+                                    v-model="orderForm.delivery_time"
+                                    type="datetime"
+                                    placeholder="选择预约配送时间"
+                                    :picker-options="{
+                                        disabledDate(time) {
+                                            return time.getTime() < Date.now();
+                                        }
+                                    }"
+                                ></el-date-picker>
+                            </el-form-item>
+                        </div>
+
+                        <!-- 商品信息 -->
+                        <div class="form-section">
+                            
+                            <div v-for="(item, index) in orderForm.items" :key="index" class="order-item-card">
+                                <div class="order-item-header">
+                                    <span class="order-item-index">商品 {{ index + 1 }}</span>
+                                    <el-button type="danger" size="mini" icon="el-icon-delete" circle @click="removeOrderItem(index)"></el-button>
+                                </div>
+                                
+                                <el-form-item label="商品">
+                                    <el-select 
+                                        v-model="item.menu_item_id" 
+                                        placeholder="选择商品"
+                                        @change="handleMenuItemSelect(index)"
+                                    >
+                                        <el-option
+                                            v-for="menuItem in menuItems"
+                                            :key="menuItem.id"
+                                            :label="menuItem.name"
+                                            :value="menuItem.id"
+                                        >
+                                            <span>{{ menuItem.name }}</span>
+                                            <span style="float: right; color: #8492a6; font-size: 13px">
+                                                ¥{{ menuItem.price }}
+                                            </span>
+                                        </el-option>
+                                    </el-select>
+                                </el-form-item>
+                                
+                                <el-form-item label="数量">
+                                    <el-input-number 
+                                        v-model="item.quantity" 
+                                        :min="1" 
+                                        :step="1"
+                                        :precision="0"
+                                        placeholder="数量"
+                                        @change="calculateTotal"
+                                    ></el-input-number>
+                                </el-form-item>
+                                
+                                <el-form-item label="规格">
+                                    <el-select 
+                                        v-model="item.selected_options" 
+                                        multiple 
+                                        placeholder="选择规格"
+                                        @change="calculateTotal"
+                                    >
+                                        <el-option
+                                            v-for="option in getMenuItemOptions(item.menu_item_id)"
+                                            :key="option.id"
+                                            :label="`${option.name} (+¥${option.price})`"
+                                            :value="option.id"
+                                        ></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </div>
+                            <div class="section-title">
+                                <span>商品信息</span>
+                                <el-button type="text" @click="addOrderItem">
+                                    <i class="el-icon-plus"></i> 添加商品
+                                </el-button>
+                            </div>
+                        </div>
+
+                        <!-- 订单信息 -->
+                        <div class="form-section">
+                            <div class="section-title">订单信息</div>
+                            <div v-if="orderForm.id" class="info-row" style="margin-bottom: 15px;">
+                                <span class="label">下单时间：</span>
+                                <span>{{ formatDate(orderForm.created_at) }}</span>
+                            </div>
+                            <el-form-item label="备注">
+                                <el-input 
+                                    type="textarea" 
+                                    v-model="orderForm.note"
+                                    placeholder="请输入备注信息"
+                                    rows="3"
+                                ></el-input>
+                            </el-form-item>
+                            <el-form-item label="付款状态">
+                                <el-switch
+                                    v-model="orderForm.is_paid"
+                                    active-text="已付款"
+                                    inactive-text="未付款"
+                                ></el-switch>
+                            </el-form-item>
+                            <el-form-item label="派送状态">
+                                <el-radio-group v-model="orderForm.status">
+                                    <el-radio label="ordered">待派送</el-radio>
+                                    <el-radio label="delivering">派送中</el-radio>
+                                    <el-radio label="completed">已送达</el-radio>
+                                </el-radio-group>
+                            </el-form-item>
+                            <div class="order-total">
+                                <span class="total-label">订单总价：</span>
+                                <span class="total-amount">¥{{ totalAmount }}</span>
+                            </div>
+                        </div>
+                    </el-form>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="createOrderDialogVisible = false">取消</el-button>
+                    <el-button type="primary" @click="createOrder">确定</el-button>
+                    <el-button 
+                        v-if="orderForm.id"
+                        type="danger" 
+                        @click="deleteOrder(orderForm)"
+                    >
+                        删除订单
+                    </el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加商品统计对话框 -->
+        <div class="modal-overlay" v-if="showItemStatsDialog" @click.self="showItemStatsDialog = false">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 class="modal-title">商品统计</h3>
+                    <button class="modal-close" @click="showItemStatsDialog = false">
+                        <i class="el-icon-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="Object.keys(itemStats).length === 0" class="empty-message">暂无数据</div>
+                    <table v-else class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>商品名称</th>
+                                <th>未派送</th>
+                                <th>已派送</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(stats, itemName) in itemStats" :key="itemName">
+                                <td>{{ itemName }}</td>
+                                <td>
+                                    <div v-if="stats.pending_orders > 0">
+                                        {{ stats.pending_orders }}<br>
+                                        {{ stats.pending_amount.toFixed(2) }}元
+                                    </div>
+                                    <div v-else>-</div>
+                                </td>
+                                <td>
+                                    <div v-if="stats.completed_orders > 0">
+                                        {{ stats.completed_orders }}<br>
+                                        {{ stats.completed_amount.toFixed(1) }}元
+                                    </div>
+                                    <div v-else>-</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <el-button @click="showItemStatsDialog = false">关闭</el-button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <style>
+        .floating-add-button {
+            position: fixed;
+            z-index: 1000;
+            touch-action: none;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        .floating-add-button .el-button {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            font-size: 24px;
+        }
+        .delivery-tabs .tab-item {
+            transition: all 0.3s;
+        }
+        .delivery-tabs .tab-item.active {
+            color: #409EFF;
+            font-weight: 500;
+        }
+        .delivery-tabs .tab-item:hover {
+            color: #409EFF;
+        }
+    </style>
+
+    <script>
+        // 获取URL参数的函数
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+    </script>
+
+    <script src="/static/js/vue@2.js"></script>
+    <script src="/static/js/element-ui.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+    <script src="/static/js/shop.js?v=1.1.3"></script>
+</body>
+</html> 

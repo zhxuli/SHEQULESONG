@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地址管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="/static/css/shop.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div class="site-container">
+            <el-header style="height: 60px; line-height: 60px; background-color: #fff; border-bottom: 1px solid #dcdfe6;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <el-button icon="el-icon-back" @click="goBack">返回</el-button>
+                        <span style="margin-left: 20px">地址管理</span>
+                    </div>
+                    <div>
+                        <span>{{ username }}</span>
+                        <el-button type="text" @click="logout">退出登录</el-button>
+                    </div>
+                </div>
+            </el-header>
+
+            <el-main>
+                <!-- 只���管理员和有权限的员工能看到添加按钮 -->
+                <div v-if="canManageAddress()" style="margin-bottom: 20px">
+                    <el-button type="primary" @click="showAddCommunityDialog">
+                        <i class="el-icon-plus"></i> 添加小区
+                    </el-button>
+                </div>
+
+                <!-- 小区列表所有员工都能看到 -->
+                <el-card v-for="community in communities" :key="community.id" style="margin-bottom: 20px">
+                    <div slot="header">
+                        <span>{{ community.name }}</span>
+                        <!-- 编辑和删除按钮只有有权限的人能看到 -->
+                        <span v-if="canManageAddress()" style="float: right">
+                            <el-button type="text" @click="showEditCommunityDialog(community)">
+                                编辑
+                            </el-button>
+                            <el-button type="text" style="color: #F56C6C" @click="deleteCommunity(community)">
+                                删除
+                            </el-button>
+                        </span>
+                    </div>
+                    
+                    <div>
+                        <p>地址：{{ community.address }}</p>
+                        <p v-if="community.note">备注：{{ community.note }}</p>
+                        
+                        <!-- 楼栋列表所有员工都能看到 -->
+                        <div style="margin-top: 20px">
+                            <div v-if="canManageAddress()" style="margin-bottom: 10px">
+                                <el-button type="text" @click="showAddBuildingDialog(community)">
+                                    <i class="el-icon-plus"></i> 添加楼栋
+                                </el-button>
+                            </div>
+                            
+                            <el-table :data="community.buildings" border>
+                                <el-table-column prop="name" label="楼栋名称"></el-table-column>
+                                <el-table-column prop="note" label="备注"></el-table-column>
+                                <el-table-column v-if="canManageAddress()" label="操作" width="150">
+                                    <template slot-scope="scope">
+                                        <el-button type="text" @click="showEditBuildingDialog(community, scope.row)">
+                                            编辑
+                                        </el-button>
+                                        <el-button type="text" style="color: #F56C6C" @click="deleteBuilding(community, scope.row)">
+                                            删除
+                                        </el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </div>
+                    </div>
+                </el-card>
+
+                <!-- 添加小区对话框 -->
+                <el-dialog title="添加小区" :visible.sync="addCommunityDialogVisible">
+                    <el-form :model="communityForm" label-width="80px">
+                        <el-form-item label="小区名称">
+                            <el-input v-model="communityForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="地址">
+                            <el-input v-model="communityForm.address"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="communityForm.note"></el-input>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="addCommunityDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="createCommunity">确定</el-button>
+                    </span>
+                </el-dialog>
+
+                <!-- 编辑小区对话框 -->
+                <el-dialog title="编辑小区" :visible.sync="editCommunityDialogVisible">
+                    <el-form :model="editCommunityForm" label-width="80px">
+                        <el-form-item label="小区名称">
+                            <el-input v-model="editCommunityForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="地址">
+                            <el-input v-model="editCommunityForm.address"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="editCommunityForm.note"></el-input>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="editCommunityDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="updateCommunity">确定</el-button>
+                    </span>
+                </el-dialog>
+
+                <!-- 添加楼栋对话框 -->
+                <el-dialog title="添��楼栋" :visible.sync="addBuildingDialogVisible">
+                    <el-form :model="buildingForm" label-width="100px">
+                        <el-tabs v-model="buildingAddMode">
+                            <el-tab-pane label="单个添加" name="single">
+                                <el-form-item label="楼栋名称">
+                                    <el-input v-model="buildingForm.name"></el-input>
+                                </el-form-item>
+                                <el-form-item label="备注">
+                                    <el-input type="textarea" v-model="buildingForm.note"></el-input>
+                                </el-form-item>
+                            </el-tab-pane>
+                            <el-tab-pane label="批量添加" name="batch">
+                                <el-form-item label="起始号">
+                                    <el-input-number v-model="buildingForm.startNum" :min="1"></el-input-number>
+                                </el-form-item>
+                                <el-form-item label="结束号">
+                                    <el-input-number v-model="buildingForm.endNum" :min="1"></el-input-number>
+                                </el-form-item>
+                                <el-form-item label="后缀">
+                                    <el-input v-model="buildingForm.suffix" placeholder="例如：号楼"></el-input>
+                                </el-form-item>
+                                <el-form-item label="备注">
+                                    <el-input type="textarea" v-model="buildingForm.note"></el-input>
+                                </el-form-item>
+                            </el-tab-pane>
+                        </el-tabs>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="addBuildingDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="createBuilding">确定</el-button>
+                    </span>
+                </el-dialog>
+
+                <!-- 编辑楼栋对话框 -->
+                <el-dialog title="编辑楼栋" :visible.sync="editBuildingDialogVisible">
+                    <el-form :model="editBuildingForm" label-width="80px">
+                        <el-form-item label="楼栋名称">
+                            <el-input v-model="editBuildingForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="editBuildingForm.note"></el-input>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="editBuildingDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="updateBuilding">确定</el-button>
+                    </span>
+                </el-dialog>
+            </el-main>
+        </div>
+    </div>
+
+    <script src="/static/js/vue@2.js"></script>
+    <script src="/static/js/element-ui.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+    <script src="/static/js/communities.js"></script>
+</body>
+</html> 

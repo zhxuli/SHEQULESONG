@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>社区乐送</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        [v-cloak] { display: none; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .app-container {
+            padding-bottom: 60px; /* 为底部导航栏留出空间 */
+        }
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background-color: #fff;
+            padding: 10px 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .content-container {
+            margin-top: 50px;
+            padding: 10px;
+        }
+        .site-card {
+            margin-bottom: 10px !important;
+            border-radius: 8px !important;
+        }
+        .site-card:hover {
+            transform: translateY(-5px);
+        }
+        .site-card .el-card__header {
+            padding: 12px 15px;
+            background-color: #f5f7fa;
+        }
+        .site-card .el-card__body {
+            padding: 15px;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #fff;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .nav-item {
+            text-align: center;
+            padding: 4px 0;
+            color: #909399;
+        }
+        .nav-item.active {
+            color: #409EFF;
+        }
+        .nav-item i {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+        .nav-item span {
+            display: block;
+            font-size: 12px;
+        }
+        /* 移动端优化的按钮样式 */
+        .mobile-btn {
+            height: 44px;
+            line-height: 44px;
+            width: 100%;
+            margin-bottom: 10px;
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* 移动端的对话框样式 */
+        .mobile-dialog {
+            margin: 0 !important;
+            position: fixed;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            border-radius: 16px 16px 0 0;
+            max-width: 100% !important;
+        }
+        .mobile-dialog .el-dialog__body {
+            padding: 20px 15px;
+        }
+        /* 轮播图样式优化 */
+        .mobile-carousel {
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .mobile-carousel .el-carousel__item {
+            background-color: #fff;
+        }
+        /* 列表样式优化 */
+        .site-list .el-col {
+            padding: 0 7.5px;
+        }
+        @media (max-width: 768px) {
+            .site-list .el-col {
+                width: 100% !important;
+            }
+        }
+        .product-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .product-item {
+            flex: 1 1 calc(50% - 10px);
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 10px;
+            text-align: center;
+        }
+        .product-item img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .product-item h4 {
+            margin: 10px 0 5px;
+            font-size: 14px;
+        }
+        .product-item p {
+            margin: 0;
+            font-size: 12px;
+            color: #909399;
+        }
+        @media (max-width: 768px) {
+            .product-item {
+                flex: 1 1 100%;
+            }
+        }
+        .stat-card {
+            transition: transform 0.3s;
+            border-radius: 8px;
+            height: 100%;
+            margin-bottom: 10px;
+        }
+        .stat-card h3 {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .stat-card p {
+            font-size: 20px !important;
+            margin: 5px 0 !important;
+        }
+        .stat-card i {
+            font-size: 24px !important;
+        }
+        .site-card {
+            transition: all 0.3s;
+        }
+        .site-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .site-header {
+            position: relative;
+            overflow: hidden;
+            padding: 12px !important;
+        }
+        .site-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            transform: rotate(30deg);
+        }
+        @media (max-width: 768px) {
+            .el-row {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+            .el-col {
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+        }
+        /* 添加页面切换动画 */
+        .app-container > div {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* 添加鼠标悬停效果 */
+        .nav-item,
+        .el-button,
+        .site-card,
+        .stat-card,
+        .el-select,
+        .el-option,
+        .el-dialog__close,
+        .el-carousel__indicator,
+        .el-table .el-table__row {
+            cursor: pointer !important;
+        }
+        
+        /* 确保链接样式正确 */
+        a {
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        /* 确保按钮在禁用状态下显示禁用光标 */
+        .el-button.is-disabled {
+            cursor: not-allowed !important;
+        }
+
+        /* 表格中的可排序列标题 */
+        .el-table th.is-sortable {
+            cursor: pointer;
+        }
+
+        /* 调整创建站点卡片的样式 */
+        .create-site-card {
+            margin-bottom: 10px;
+            padding: 10px !important;
+        }
+        .create-site-card i {
+            font-size: 32px !important;
+            margin-bottom: 5px !important;
+        }
+
+        /* 调整站点卡片的样式 */
+        .site-card {
+            margin-bottom: 10px !important;
+            border-radius: 8px !important;
+        }
+        .site-header h2 {
+            font-size: 16px !important;
+        }
+        .site-header p {
+            font-size: 12px !important;
+            margin: 2px 0 0 !important;
+        }
+        .site-info {
+            padding: 10px !important;
+        }
+        .site-info p {
+            margin: 5px 0 !important;
+            font-size: 13px !important;
+        }
+        
+        /* 调整行间距 */
+        .el-row {
+            margin-bottom: 10px !important;
+        }
+        .el-col {
+            padding: 5px !important;
+        }
+
+        /* 新的创建站点按钮样式 */
+        .create-site-btn {
+            width: 44px;
+            height: 44px;
+            background: #409EFF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 12px rgba(64, 158, 255, 0.3);
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            z-index: 999;
+        }
+        .create-site-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
+        }
+        .create-site-btn:active {
+            transform: scale(0.95);
+        }
+        .create-site-btn i {
+            font-size: 24px;
+            color: #fff;
+        }
+        /* 移除旧的创建站点卡片样式 */
+        .create-site-card {
+            display: none;
+        }
+
+        /* 修复我的页面按钮间距问题 */
+        .user-info-card .el-button {
+            margin-left: 0 !important;
+            margin-bottom: 10px !important;
+        }
+        .user-info-card .el-button:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        /* 四宫格样式优化 */
+        .grid-item {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px 15px;
+            text-align: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 90px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #ebeef5;
+        }
+        .grid-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #409EFF;
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+        .grid-item:hover::before {
+            transform: scaleX(1);
+        }
+        .grid-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px 0 rgba(0,0,0,0.08);
+            border-color: #409EFF;
+        }
+        .grid-item i {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: #409EFF;
+            transition: all 0.3s;
+        }
+        .grid-item:hover i {
+            transform: scale(1.1);
+        }
+        .grid-item span {
+            font-size: 14px;
+            color: #606266;
+            transition: color 0.3s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+        .grid-item:hover span {
+            color: #409EFF;
+        }
+        .grid-item.danger {
+            border-color: #fef0f0;
+        }
+        .grid-item.danger::before {
+            background: #F56C6C;
+        }
+        .grid-item.danger i {
+            color: #F56C6C;
+        }
+        .grid-item.danger:hover {
+            border-color: #F56C6C;
+            background: #fef0f0;
+        }
+        .grid-item.danger:hover span {
+            color: #F56C6C;
+        }
+        
+        /* 优化用户信息卡片 */
+        .user-info-card .el-card__body {
+            padding: 0;
+        }
+        .user-info-card .el-row {
+            margin: 0 -7.5px;
+        }
+        .user-info-card .el-col {
+            padding: 0 7.5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div class="app-container">
+            <!-- 顶部导航 -->
+            <div class="header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>社区派送服务</h2>
+                    <template v-if="isLoggedIn">
+                        <span>{{ username }}</span>
+                    </template>
+                    <el-button v-else type="text" @click="showLoginDialog">登录/注册</el-button>
+                </div>
+            </div>
+
+            <!-- 主要内容区 -->
+            <div class="content-container">
+                <!-- 未登录状态显示项目介绍 -->
+                <template v-if="!isLoggedIn">
+                    <el-carousel height="180px" class="mobile-carousel">
+                        <el-carousel-item>
+                            <div style="height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #409EFF, #36D1DC);">
+                                <h3 style="color: #fff; margin: 0;">便捷的社区派送服务平台</h3>
+                            </div>
+                        </el-carousel-item>
+                        <el-carousel-item>
+                            <div style="height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #36D1DC, #5B86E5);">
+                                <h3 style="color: #fff; margin: 0;">实时订单跟踪</h3>
+                            </div>
+                        </el-carousel-item>
+                    </el-carousel>
+                </template>
+
+                <!-- 登录后显示内容 -->
+                <template v-else>
+                    <!-- 首页内容 -->
+                    <div v-if="currentTab === 'home'" class="site-list">
+                        <!-- 站点列表 -->
+                        <el-row :gutter="10">
+                            <el-col :span="24" v-for="site in sites" :key="site.id">
+                                <el-card 
+                                    class="site-card" 
+                                    :body-style="{ padding: '0' }" 
+                                    shadow="hover"
+                                >
+                                    <!-- 站点头部 -->
+                                    <div class="site-header" :style="{ 
+                                        background: site.role === 'admin' ? 'linear-gradient(135deg, #409EFF, #36D1DC)' : 'linear-gradient(135deg, #1f4e5f, #79a8a9)',
+                                        color: '#fff'
+                                    }">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <h2 style="margin: 0;">{{ site.name }}</h2>
+                                                <p style="opacity: 0.8;">{{ site.role === 'admin' ? '站长' : '员工' }}</p>
+                                            </div>
+                                            <a 
+                                                :href="'/shop/' + site.id"
+                                                class="el-button el-button--primary is-round el-button--mini"
+                                                style="background: rgba(255,255,255,0.2); border: none; color: #fff;"
+                                            >
+                                                进入站点
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <!-- 站点信息 -->
+                                    <div class="site-info">
+                                        <p style="display: flex; align-items: center;">
+                                            <i class="el-icon-location" style="margin-right: 5px; color: #909399;"></i>
+                                            <span>{{ site.address }}</span>
+                                        </p>
+                                        <p v-if="site.phone" style="display: flex; align-items: center;">
+                                            <i class="el-icon-phone" style="margin-right: 5px; color: #909399;"></i>
+                                            <span>{{ site.phone }}</span>
+                                        </p>
+                                        <p v-if="site.wechat" style="display: flex; align-items: center;">
+                                            <i class="el-icon-chat-dot-round" style="margin-right: 5px; color: #909399;"></i>
+                                            <span>{{ site.wechat }}</span>
+                                        </p>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                        </el-row>
+
+                        <!-- 创建站点按钮 -->
+                        <div 
+                            class="create-site-btn"
+                            @click="showCreateSiteDialog"
+                        >
+                            <i class="el-icon-plus"></i>
+                        </div>
+                    </div>
+
+                    <!-- 经营日报页面 -->
+                    <div v-else-if="currentTab === 'orders'" style="padding: 20px;">
+                        <!-- 添加站点选择器 -->
+                        <el-select 
+                            v-model="currentSite" 
+                            placeholder="请选择站点" 
+                            style="width: 100%; margin-bottom: 20px;"
+                            @change="handleSiteChange"
+                            value-key="id"
+                        >
+                            <el-option
+                                v-for="site in sites"
+                                :key="site.id"
+                                :label="site.name"
+                                :value="site"
+                            ></el-option>
+                        </el-select>
+
+                        <el-card v-if="isLoggedIn && currentSite" class="box-card">
+                            <div slot="header">
+                                <span>{{ currentSite.name }} - 最近30天经营数据</span>
+                            </div>
+                            <!-- 数据总览 -->
+                            <div style="margin-bottom: 20px;">
+                                <el-row :gutter="20">
+                                    <el-col :span="12">
+                                        <el-card shadow="hover">
+                                            <div style="text-align: center;">
+                                                <h3>总订单数</h3>
+                                                <p style="font-size: 24px; color: #409EFF;">{{ totalOrders }}</p>
+                                            </div>
+                                        </el-card>
+                                    </el-col>
+                                    <el-col :span="12">
+                                        <el-card shadow="hover">
+                                            <div style="text-align: center;">
+                                                <h3>总金额</h3>
+                                                <p style="font-size: 24px; color: #67C23A;">¥{{ totalAmount.toFixed(2) }}</p>
+                                            </div>
+                                        </el-card>
+                                    </el-col>
+                                </el-row>
+                            </div>
+
+                            <!-- 切换选项卡 -->
+                            <el-tabs v-model="activeDataTab">
+                                <!-- 图表展示选项卡 -->
+                                <el-tab-pane label="图表展示" name="chart">
+                                    <div ref="chartContainer" style="height: 300px;"></div>
+                                </el-tab-pane>
+                                <!-- 详细数据选项卡 -->
+                                <el-tab-pane label="详细数据" name="table">
+                                    <el-table :data="dailyStats" style="width: 100%">
+                                        <el-table-column prop="date" label="日期" width="120"></el-table-column>
+                                        <el-table-column prop="orders" label="订单数" width="100"></el-table-column>
+                                        <el-table-column prop="amount" label="金额">
+                                            <template slot-scope="scope">
+                                                ¥{{ scope.row.amount.toFixed(2) }}
+                                            </template>
+                                        </el-table-column>
+                                    </el-table>
+                                </el-tab-pane>
+                            </el-tabs>
+                        </el-card>
+                        <div v-else style="text-align: center; padding: 20px;">
+                            <el-empty description="请先选择一个站点"></el-empty>
+                        </div>
+                    </div>
+
+                    <!-- 我的页面 -->
+                    <div v-else-if="currentTab === 'mine'" style="padding: 20px;">
+                        <el-card class="user-info-card" style="margin-bottom: 20px;">
+                            <div style="text-align: center; padding: 20px;">
+                                <div style="width: 80px; height: 80px; border-radius: 40px; background: #409EFF; color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                                    <i class="el-icon-user" style="font-size: 40px;"></i>
+                                </div>
+                                <h2 style="margin: 0; font-size: 18px;">{{ username }}</h2>
+                            </div>
+                            <div style="padding: 20px;">
+                                <el-row :gutter="10">
+                                    <!-- 修改用户名 -->
+                                    <el-col :span="12">
+                                        <div class="grid-item" @click="showUpdateUsernameDialog">
+                                            <i class="el-icon-edit"></i>
+                                            <span>修改用户名</span>
+                                        </div>
+                                    </el-col>
+                                    <!-- 修改密码 -->
+                                    <el-col :span="12">
+                                        <div class="grid-item" @click="showUpdatePasswordDialog">
+                                            <i class="el-icon-lock"></i>
+                                            <span>修改密码</span>
+                                        </div>
+                                    </el-col>
+                                    <!-- 退出/删除站点 -->
+                                    <template v-for="site in sites">
+                                        <el-col :span="12">
+                                            <div 
+                                                class="grid-item"
+                                                :class="{ 'danger': site.role === 'admin' }"
+                                                @click="site.role === 'admin' ? deleteSite(site.id, site.name) : leaveSite(site.id)"
+                                            >
+                                                <i :class="site.role === 'admin' ? 'el-icon-delete' : 'el-icon-circle-close'"></i>
+                                                <span>{{ site.role === 'admin' ? site.name : '退出' + site.name }}</span>
+                                            </div>
+                                        </el-col>
+                                    </template>
+                                    <!-- 退出登录 -->
+                                    <el-col :span="12">
+                                        <div class="grid-item danger" @click="logout">
+                                            <i class="el-icon-switch-button"></i>
+                                            <span>退出登录</span>
+                                        </div>
+                                    </el-col>
+                                </el-row>
+                            </div>
+                        </el-card>
+                    </div>
+                </template>
+            </div>
+
+            <!-- 底部导航栏 -->
+            <div class="bottom-nav">
+                <div class="nav-item" :class="{ active: currentTab === 'home' }" @click="currentTab = 'home'">
+                    <i class="el-icon-s-home"></i>
+                    <span>首页</span>
+                </div>
+                <div class="nav-item" :class="{ active: currentTab === 'orders' }" @click="currentTab = 'orders'">
+                    <i class="el-icon-s-data"></i>
+                    <span>经营日报</span>
+                </div>
+                <div class="nav-item" :class="{ active: currentTab === 'mine' }" @click="currentTab = 'mine'">
+                    <i class="el-icon-user"></i>
+                    <span>我的</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 登录/注册对话框 -->
+        <el-dialog 
+            :title="isRegisterMode ? '注册' : '登录'" 
+            :visible.sync="loginDialogVisible"
+            custom-class="mobile-dialog"
+            width="100%"
+        >
+            <el-form :model="loginForm" :rules="rules" ref="loginForm" label-width="0">
+                <el-form-item prop="username">
+                    <el-input v-model="loginForm.username" placeholder="用户名"></el-input>
+                </el-form-item>
+                <el-form-item prop="password">
+                    <el-input type="password" v-model="loginForm.password" placeholder="密码"></el-input>
+                </el-form-item>
+                <el-button type="primary" class="mobile-btn" @click="handleSubmit">{{ isRegisterMode ? '注册' : '登录' }}</el-button>
+                <el-button type="text" style="width: 100%; margin-left: 0;" @click="isRegisterMode = !isRegisterMode">
+                    {{ isRegisterMode ? '已有账号？去登录' : '没有账号？去注册' }}
+                </el-button>
+            </el-form>
+        </el-dialog>
+
+        <!-- 创建站点对话框 -->
+        <el-dialog 
+            title="创建站点" 
+            :visible.sync="createSiteDialogVisible"
+            custom-class="mobile-dialog"
+            width="100%"
+        >
+            <el-form :model="siteForm" :rules="siteRules" ref="siteForm" label-width="80px">
+                <el-form-item label="站点名称" prop="name">
+                    <el-input v-model="siteForm.name"></el-input>
+                </el-form-item>
+                <el-form-item label="地址" prop="address">
+                    <el-input v-model="siteForm.address"></el-input>
+                </el-form-item>
+                <el-form-item label="手机号">
+                    <el-input v-model="siteForm.phone" placeholder="选填"></el-input>
+                </el-form-item>
+                <el-form-item label="微信号">
+                    <el-input v-model="siteForm.wechat" placeholder="选填"></el-input>
+                </el-form-item>
+                <el-button type="primary" class="mobile-btn" @click="createSite">确定创建</el-button>
+            </el-form>
+        </el-dialog>
+
+        <!-- 修改用户名对话框 -->
+        <el-dialog 
+            title="修改用户名" 
+            :visible.sync="updateUsernameDialogVisible"
+            custom-class="mobile-dialog"
+            width="100%"
+        >
+            <el-form :model="updateUsernameForm" :rules="updateUsernameRules" ref="updateUsernameForm" label-width="0">
+                <el-form-item prop="newUsername">
+                    <el-input v-model="updateUsernameForm.newUsername" placeholder="新用户名"></el-input>
+                </el-form-item>
+                <el-button type="primary" class="mobile-btn" @click="updateUsername">确认修改</el-button>
+            </el-form>
+        </el-dialog>
+
+        <!-- 修改密码对话框 -->
+        <el-dialog 
+            title="修改密码" 
+            :visible.sync="updatePasswordDialogVisible"
+            custom-class="mobile-dialog"
+            width="100%"
+        >
+            <el-form :model="updatePasswordForm" :rules="updatePasswordRules" ref="updatePasswordForm" label-width="0">
+                <el-form-item prop="oldPassword">
+                    <el-input type="password" v-model="updatePasswordForm.oldPassword" placeholder="当前密码"></el-input>
+                </el-form-item>
+                <el-form-item prop="newPassword">
+                    <el-input type="password" v-model="updatePasswordForm.newPassword" placeholder="新密码"></el-input>
+                </el-form-item>
+                <el-form-item prop="confirmPassword">
+                    <el-input type="password" v-model="updatePasswordForm.confirmPassword" placeholder="确认新密码"></el-input>
+                </el-form-item>
+                <el-button type="primary" class="mobile-btn" @click="updatePassword">确认修改</el-button>
+            </el-form>
+        </el-dialog>
+    </div>
+
+    <!-- 引入Vue和Element UI的JS -->
+    <script src="/static/js/vue@2.js"></script>
+    <script src="/static/js/element-ui.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+    <script src="/static/js/echarts.min.js"></script>
+    
+    <script>
+        // 配置axios以支持cookie认证
+        axios.defaults.withCredentials = true;
+
+        new Vue({
+            el: '#app',
+            data: {
+                isLoggedIn: false,
+                username: '',
+                loginDialogVisible: false,
+                isRegisterMode: false,
+                currentTab: 'home',
+                loginForm: {
+                    username: '',
+                    password: ''
+                },
+                rules: {
+                    username: [
+                        { required: true, message: '请输入用户名', trigger: 'blur' }
+                    ],
+                    password: [
+                        { required: true, message: '请输入密码', trigger: 'blur' }
+                    ],
+                },
+                sites: [],
+                createSiteDialogVisible: false,
+                siteForm: {
+                    name: '',
+                    address: '',
+                    phone: '',
+                    wechat: ''
+                },
+                siteRules: {
+                    name: [
+                        { required: true, message: '请输入站点名称', trigger: 'blur' }
+                    ],
+                    address: [
+                        { required: true, message: '请输入地址', trigger: 'blur' }
+                    ]
+                },
+                hoveredSiteId: null, // 用于跟踪悬停的站点ID
+                updateUsernameDialogVisible: false,
+                updatePasswordDialogVisible: false,
+                updateUsernameForm: {
+                    newUsername: ''
+                },
+                updatePasswordForm: {
+                    oldPassword: '',
+                    newPassword: '',
+                    confirmPassword: ''
+                },
+                updateUsernameRules: {
+                    newUsername: [
+                        { required: true, message: '请输入新用户名', trigger: 'blur' }
+                    ]
+                },
+                updatePasswordRules: {
+                    oldPassword: [
+                        { required: true, message: '请输入当前密码', trigger: 'blur' }
+                    ],
+                    newPassword: [
+                        { required: true, message: '请输入新密码', trigger: 'blur' }
+                    ],
+                    confirmPassword: [
+                        { required: true, message: '请确认新密码', trigger: 'blur' }
+                    ]
+                },
+                currentSite: null,
+                dailyStats: [],
+                totalOrders: 0,
+                totalAmount: 0,
+                chart: null,
+                activeDataTab: 'chart',  // 添加到 data 中
+            },
+            created() {
+                const username = localStorage.getItem('username');
+                if (username) {
+                    this.isLoggedIn = true;
+                    this.username = username;
+                    this.fetchSites();
+                }
+            },
+            destroyed() {
+                // 组件销毁时清理图表实例
+                if (this.chart) {
+                    this.chart.dispose();
+                    this.chart = null;
+                }
+            },
+            watch: {
+                currentTab(newTab) {
+                    // 当切换到经营日报页面，并且只有一个站点时，自动选择该站点
+                    if (newTab === 'orders' && this.sites.length === 1 && !this.currentSite) {
+                        this.currentSite = this.sites[0];
+                        this.handleSiteChange(this.sites[0]);
+                    }
+                    // 当离开经营日报页面时，销毁图表实例
+                    if (newTab !== 'orders' && this.chart) {
+                        this.chart.dispose();
+                        this.chart = null;
+                    }
+                },
+                activeDataTab(newTab) {
+                    // 当切换到图表选项卡时，初始化或更新图表
+                    if (newTab === 'chart') {
+                        this.$nextTick(() => {
+                            this.updateChart();
+                        });
+                    }
+                }
+            },
+            methods: {
+                showCreateSiteDialog() {
+                    this.createSiteDialogVisible = true;
+                },
+                async createSite() {
+                    try {
+                        const formData = {
+                            name: this.siteForm.name,
+                            address: this.siteForm.address
+                        };
+                        if (this.siteForm.phone) {
+                            formData.phone = this.siteForm.phone;
+                        }
+                        if (this.siteForm.wechat) {
+                            formData.wechat = this.siteForm.wechat;
+                        }
+                        await axios.post('/sites', formData);
+                        this.$message.success('站点创建成功');
+                        this.createSiteDialogVisible = false;
+                        this.fetchSites();
+                        this.siteForm = { name: '', address: '', phone: '', wechat: '' };
+                    } catch (error) {
+                        console.error('Create site error:', error.response || error);
+                        if (error.response?.status === 401) {
+                            this.$message.error('登录已过期，请重新登录');
+                            this.isLoggedIn = false;
+                            return;
+                        }
+                        this.$message.error(error.response?.data?.detail || '创建站点失败');
+                    }
+                },
+                async handleSubmit() {
+                    try {
+                        const url = this.isRegisterMode ? '/register' : '/login';
+                        const response = await axios.post(url, {
+                            username: this.loginForm.username,
+                            password: this.loginForm.password
+                        });
+                        
+                        if (this.isRegisterMode) {
+                            this.$message.success('注册成功,请登录');
+                            this.loginForm = {
+                                username: '',
+                                password: ''
+                            };
+                            this.isRegisterMode = false;
+                        } else {
+                            localStorage.setItem('username', this.loginForm.username);
+                            this.isLoggedIn = true;
+                            this.username = this.loginForm.username;
+                            this.loginDialogVisible = false;
+                            this.fetchSites();
+                            this.$message.success('登录成功');
+                        }
+                    } catch (error) {
+                        console.error('Login error:', error.response || error);
+                        this.$message.error(error.response?.data?.detail || '操作失败');
+                    }
+                },
+                async logout() {
+                    try {
+                        await axios.post('/logout');
+                        localStorage.removeItem('username');
+                        this.isLoggedIn = false;
+                        this.username = '';
+                        this.$message.success('已退出登录');
+                    } catch (error) {
+                        console.error('Logout error:', error.response || error);
+                        this.$message.error('退出失败');
+                    }
+                },
+                async fetchSites() {
+                    try {
+                        const response = await axios.get('/sites');
+                        this.sites = response.data.map(site => ({
+                            ...site,
+                            products: site.products || []
+                        }));
+                        
+                        // 如果当前选中的站点不在新的站点列表中，重置currentSite
+                        if (this.currentSite && !this.sites.find(site => site.id === this.currentSite.id)) {
+                            this.currentSite = null;
+                        }
+                        
+                        // 如果当前是经营日报页面，并且只有一个站点，则自动选择该站点
+                        if (this.currentTab === 'orders') {
+                            if (this.sites.length === 1) {
+                                this.currentSite = this.sites[0];
+                                this.handleSiteChange(this.sites[0]);
+                            } else if (!this.currentSite && this.sites.length > 0) {
+                                // 如果没有选中的站点但有可用站点，选择第一个
+                                this.currentSite = this.sites[0];
+                                this.handleSiteChange(this.sites[0]);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Fetch sites error:', error.response || error);
+                        this.$message.error('获取站点列表失败');
+                    }
+                },
+                showLoginDialog() {
+                    this.loginDialogVisible = true;
+                    this.isRegisterMode = false;
+                    this.loginForm = {
+                        username: '',
+                        password: ''
+                    };
+                },
+                async leaveSite(siteId) {
+                    try {
+                        const response = await axios.delete(`/sites/${siteId}/staff/leave`);
+                        this.$message.success(response.data.message);
+                        // 更新站点列表或用户状态
+                        this.fetchSites();
+                    } catch (error) {
+                        console.error('Leave site error:', error.response || error);
+                        this.$message.error(error.response?.data?.detail || '退出站点失败');
+                    }
+                },
+                showUpdateUsernameDialog() {
+                    this.updateUsernameDialogVisible = true;
+                    this.updateUsernameForm.newUsername = '';
+                },
+                showUpdatePasswordDialog() {
+                    this.updatePasswordDialogVisible = true;
+                    this.updatePasswordForm = {
+                        oldPassword: '',
+                        newPassword: '',
+                        confirmPassword: ''
+                    };
+                },
+                async updateUsername() {
+                    try {
+                        const response = await axios.put('/user/username', {
+                            new_username: this.updateUsernameForm.newUsername
+                        });
+                        this.username = this.updateUsernameForm.newUsername;
+                        localStorage.setItem('username', this.updateUsernameForm.newUsername);
+                        this.updateUsernameDialogVisible = false;
+                        this.$message.success('用户名修改成功');
+                    } catch (error) {
+                        console.error('Update username error:', error.response || error);
+                        this.$message.error(error.response?.data?.detail || '修改用户名失败');
+                    }
+                },
+                async updatePassword() {
+                    if (this.updatePasswordForm.newPassword !== this.updatePasswordForm.confirmPassword) {
+                        this.$message.error('两次输入的密码不一致');
+                        return;
+                    }
+                    try {
+                        const response = await axios.put('/user/password', {
+                            old_password: this.updatePasswordForm.oldPassword,
+                            new_password: this.updatePasswordForm.newPassword
+                        });
+                        this.updatePasswordDialogVisible = false;
+                        this.$message.success('密码修改成功');
+                    } catch (error) {
+                        console.error('Update password error:', error.response || error);
+                        this.$message.error(error.response?.data?.detail || '修改密码失败');
+                    }
+                },
+                async deleteSite(siteId, siteName) {
+                    try {
+                        await this.$confirm(`确定要删除站点"${siteName}"吗？此操作不可恢复`, '删除确认', {
+                            confirmButtonText: '删除',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        const response = await axios.delete(`/sites/${siteId}`);
+                        this.$message.success(`站点"${siteName}"删除成功`);
+                        this.fetchSites();
+                    } catch (error) {
+                        if (error === 'cancel') return;
+                        console.error('Delete site error:', error.response || error);
+                        this.$message.error(error.response?.data?.detail || '删除站点失败');
+                    }
+                },
+                async fetchMonthlyStats(siteId) {
+                    try {
+                        const response = await axios.get(`/sites/${siteId}/orders/monthly-stats`);
+                        const orders = response.data;
+                        
+                        // 初始化最近30天的数据
+                        const stats = {};
+                        for (let i = 0; i < 30; i++) {
+                            const date = new Date();
+                            date.setDate(date.getDate() - i);
+                            const dateStr = date.toISOString().split('T')[0];
+                            stats[dateStr] = { orders: 0, amount: 0 };
+                        }
+                        
+                        // 统计每天的订单数和金额
+                        orders.forEach(order => {
+                            const dateStr = order.delivery_time.split('T')[0];
+                            if (stats[dateStr]) {
+                                stats[dateStr].orders++;
+                                stats[dateStr].amount += parseFloat(order.total_amount);
+                            }
+                        });
+                        
+                        // 转换为数组，过滤掉订单数为0的日期，并排序
+                        this.dailyStats = Object.entries(stats)
+                            .filter(([_, data]) => data.orders > 0)  // 过滤掉订单数为0的日期
+                            .map(([date, data]) => ({
+                                date,
+                                orders: data.orders,
+                                amount: data.amount
+                            }))
+                            .sort((a, b) => b.date.localeCompare(a.date));
+                        
+                        // 计算总计
+                        this.totalOrders = this.dailyStats.reduce((sum, day) => sum + day.orders, 0);
+                        this.totalAmount = this.dailyStats.reduce((sum, day) => sum + day.amount, 0);
+                        
+                        // 更新图表
+                        this.updateChart();
+                    } catch (error) {
+                        console.error('Fetch monthly stats error:', error.response || error);
+                        this.$message.error(error.response?.data?.detail || '获取经营数据失败');
+                    }
+                },
+                
+                updateChart() {
+                    // 只在图表选项卡激活时初始化和更新图表
+                    if (this.activeDataTab === 'chart') {
+                        if (!this.chart) {
+                            this.chart = echarts.init(this.$refs.chartContainer);
+                        }
+                        
+                        const dates = this.dailyStats.map(item => item.date).reverse();
+                        const orders = this.dailyStats.map(item => item.orders).reverse();
+                        const amounts = this.dailyStats.map(item => item.amount).reverse();
+                        
+                        const option = {
+                            tooltip: {
+                                trigger: 'axis',
+                                axisPointer: {
+                                    type: 'cross',
+                                    crossStyle: {
+                                        color: '#999'
+                                    }
+                                }
+                            },
+                            legend: {
+                                data: ['订单数', '金额']
+                            },
+                            xAxis: {
+                                type: 'category',
+                                data: dates,
+                                axisLabel: {
+                                    rotate: 45
+                                }
+                            },
+                            yAxis: [
+                                {
+                                    type: 'value',
+                                    name: '订单数',
+                                    position: 'left'
+                                },
+                                {
+                                    type: 'value',
+                                    name: '金额',
+                                    position: 'right'
+                                }
+                            ],
+                            series: [
+                                {
+                                    name: '订单数',
+                                    type: 'bar',
+                                    data: orders,
+                                    yAxisIndex: 0
+                                },
+                                {
+                                    name: '金额',
+                                    type: 'line',
+                                    data: amounts,
+                                    yAxisIndex: 1
+                                }
+                            ]
+                        };
+                        
+                        this.chart.setOption(option);
+                    }
+                },
+                
+                async handleSiteChange(site) {
+                    if (!site) {
+                        this.currentSite = null;
+                        this.dailyStats = [];
+                        this.totalOrders = 0;
+                        this.totalAmount = 0;
+                        if (this.chart) {
+                            this.chart.clear();
+                        }
+                        return;
+                    }
+                    
+                    this.currentSite = site;
+                    await this.fetchMonthlyStats(site.id);
+                },
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>菜单管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="/static/css/shop.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div class="site-container">
+            <el-header style="height: 60px; line-height: 60px; background-color: #fff; border-bottom: 1px solid #dcdfe6;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <el-button icon="el-icon-back" @click="goBack">返回</el-button>
+                        <span style="margin-left: 20px">菜单管理</span>
+                    </div>
+                    <div>
+                        <span>{{ username }}</span>
+                        <el-button type="text" @click="logout">退出登录</el-button>
+                    </div>
+                </div>
+            </el-header>
+
+            <el-main>
+                <el-row>
+                    <el-col :span="24">
+                        <el-button type="primary" @click="showAddMenuItemDialog">添加菜品</el-button>
+                    </el-col>
+                </el-row>
+                
+                <!-- 菜品列表 -->
+                <el-table :data="menuItems" style="margin-top: 20px">
+                    <el-table-column prop="name" label="菜品名称"></el-table-column>
+                    <el-table-column prop="price" label="价格"></el-table-column>
+                    <el-table-column prop="description" label="描述"></el-table-column>
+                    <el-table-column prop="note" label="备注"></el-table-column>
+                    <el-table-column label="可选项" width="200">
+                        <template slot-scope="scope">
+                            <el-tag 
+                                v-for="option in scope.row.options" 
+                                :key="option.id"
+                                :type="option.is_available ? 'success' : 'info'"
+                                style="margin-right: 5px; margin-bottom: 5px;"
+                            >
+                                {{ option.name }} (+{{ option.price }})
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="状态">
+                        <template slot-scope="scope">
+                            <el-tag :type="scope.row.is_available ? 'success' : 'info'">
+                                {{ scope.row.is_available ? '上架中' : '已下架' }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="200">
+                        <template slot-scope="scope">
+                            <el-button 
+                                type="text"
+                                @click="showEditMenuItemDialog(scope.row)"
+                            >
+                                编辑
+                            </el-button>
+                            <el-button 
+                                type="text"
+                                style="color: #F56C6C"
+                                @click="deleteMenuItem(scope.row)"
+                            >
+                                删除
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <!-- 添加菜品对话框 -->
+                <el-dialog title="添加菜品" :visible.sync="addMenuItemDialogVisible">
+                    <el-form :model="menuItemForm" label-width="80px">
+                        <el-form-item label="菜品名称">
+                            <el-input v-model="menuItemForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="价格">
+                            <el-input-number v-model="menuItemForm.price" :precision="2" :step="0.1"></el-input-number>
+                        </el-form-item>
+                        <el-form-item label="描述">
+                            <el-input type="textarea" v-model="menuItemForm.description"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="menuItemForm.note"></el-input>
+                        </el-form-item>
+                        <el-form-item label="可选项">
+                            <div v-for="(option, index) in menuItemForm.options" :key="index" style="margin-bottom: 10px;">
+                                <el-row :gutter="10">
+                                    <el-col :span="8">
+                                        <el-input v-model="option.name" placeholder="选项名称"></el-input>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-input-number v-model="option.price" :precision="2" :step="0.1" placeholder="额外价格"></el-input-number>
+                                    </el-col>
+                                    <el-col :span="6">
+                                        <el-input v-model="option.description" placeholder="描述"></el-input>
+                                    </el-col>
+                                    <el-col :span="2">
+                                        <el-button type="danger" icon="el-icon-delete" circle @click="removeOption(index)"></el-button>
+                                    </el-col>
+                                </el-row>
+                            </div>
+                            <el-button type="text" @click="addOption">
+                                <i class="el-icon-plus"></i> 添加可选项
+                            </el-button>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="addMenuItemDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="createMenuItem">确定</el-button>
+                    </span>
+                </el-dialog>
+
+                <!-- 编辑菜品对话框 -->
+                <el-dialog title="编辑菜品" :visible.sync="editMenuItemDialogVisible">
+                    <el-form :model="editMenuItemForm" label-width="80px">
+                        <el-form-item label="菜品名称">
+                            <el-input v-model="editMenuItemForm.name"></el-input>
+                        </el-form-item>
+                        <el-form-item label="价格">
+                            <el-input-number v-model="editMenuItemForm.price" :precision="2" :step="0.1"></el-input-number>
+                        </el-form-item>
+                        <el-form-item label="描述">
+                            <el-input type="textarea" v-model="editMenuItemForm.description"></el-input>
+                        </el-form-item>
+                        <el-form-item label="备注">
+                            <el-input type="textarea" v-model="editMenuItemForm.note"></el-input>
+                        </el-form-item>
+                        <el-form-item label="可选项">
+                            <div v-for="(option, index) in editMenuItemForm.options" :key="index" style="margin-bottom: 10px;">
+                                <el-row :gutter="10">
+                                    <el-col :span="8">
+                                        <el-input v-model="option.name" placeholder="选项名称"></el-input>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-input-number v-model="option.price" :precision="2" :step="0.1" placeholder="额外价格"></el-input-number>
+                                    </el-col>
+                                    <el-col :span="6">
+                                        <el-input v-model="option.description" placeholder="描述"></el-input>
+                                    </el-col>
+                                    <el-col :span="2">
+                                        <el-button type="danger" icon="el-icon-delete" circle @click="removeEditOption(index)"></el-button>
+                                    </el-col>
+                                </el-row>
+                            </div>
+                            <el-button type="text" @click="addEditOption">
+                                <i class="el-icon-plus"></i> 添加可选项
+                            </el-button>
+                        </el-form-item>
+                        <el-form-item label="状态">
+                            <el-switch
+                                v-model="editMenuItemForm.is_available"
+                                active-text="上架"
+                                inactive-text="下架"
+                            >
+                            </el-switch>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="editMenuItemDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="updateMenuItem">确定</el-button>
+                    </span>
+                </el-dialog>
+            </el-main>
+        </div>
+    </div>
+
+    <script src="/static/js/vue@2.js"></script>
+    <script src="/static/js/element-ui.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+    <script src="/static/js/menu.js"></script>
+</body>
+</html> 

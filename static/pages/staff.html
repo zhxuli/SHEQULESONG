@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>员工管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="/static/css/shop.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div class="site-container">
+            <el-header style="height: 60px; line-height: 60px; background-color: #fff; border-bottom: 1px solid #dcdfe6;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <el-button icon="el-icon-back" @click="goBack">返回</el-button>
+                        <span style="margin-left: 20px">员工管理</span>
+                    </div>
+                    <div>
+                        <span>{{ username }}</span>
+                        <el-button type="text" @click="logout">退出登录</el-button>
+                    </div>
+                </div>
+            </el-header>
+
+            <el-main>
+                <el-row>
+                    <el-col :span="24">
+                        <el-button type="primary" @click="showAddStaffDialog">添加员工</el-button>
+                    </el-col>
+                </el-row>
+                <el-table :data="staffList" style="margin-top: 20px">
+                    <el-table-column prop="username" label="用户名"></el-table-column>
+                    <el-table-column label="权限">
+                        <template slot-scope="scope">
+                            <el-tag 
+                                v-for="perm in scope.row.permissions" 
+                                :key="perm"
+                                style="margin-right: 5px; margin-bottom: 5px;"
+                            >
+                                {{ permissionLabels[perm] || perm }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="200">
+                        <template slot-scope="scope">
+                            <el-button 
+                                type="text" 
+                                @click="showEditPermissionsDialog(scope.row)"
+                            >
+                                编辑权限
+                            </el-button>
+                            <el-button 
+                                type="text" 
+                                style="color: #F56C6C"
+                                @click="removeStaff(scope.row)"
+                            >
+                                移除
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <!-- 添加员工对话框 -->
+                <el-dialog title="添加员工" :visible.sync="addStaffDialogVisible">
+                    <el-form :model="staffForm" label-width="100px">
+                        <el-form-item label="用户名">
+                            <el-input v-model="staffForm.username" placeholder="请输入用户名"></el-input>
+                        </el-form-item>
+                        <el-form-item label="权限">
+                            <el-checkbox-group v-model="staffForm.permissions">
+                                <el-checkbox label="ORDER">接单权限</el-checkbox>
+                                <el-checkbox label="DELIVERY">配送权限</el-checkbox>
+                                <el-checkbox label="ORDER_MANAGE">订单管理权限</el-checkbox>
+                                <el-checkbox label="MENU_MANAGE">菜单管理权限</el-checkbox>
+                                <el-checkbox label="ADDRESS_MANAGE">地址管理权限</el-checkbox>
+                            </el-checkbox-group>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="addStaffDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="addStaff">确定</el-button>
+                    </span>
+                </el-dialog>
+
+                <!-- 编辑权限对话框 -->
+                <el-dialog title="编辑权限" :visible.sync="editPermissionsDialogVisible">
+                    <el-form :model="editPermissionsForm" label-width="100px">
+                        <el-form-item label="权限">
+                            <el-checkbox-group v-model="editPermissionsForm.permissions">
+                                <el-checkbox label="ORDER">接单权限</el-checkbox>
+                                <el-checkbox label="DELIVERY">配送权限</el-checkbox>
+                                <el-checkbox label="ORDER_MANAGE">订单管理权限</el-checkbox>
+                                <el-checkbox label="MENU_MANAGE">菜单管理权限</el-checkbox>
+                                <el-checkbox label="ADDRESS_MANAGE">地址管理权限</el-checkbox>
+                            </el-checkbox-group>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="editPermissionsDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="updatePermissions">确定</el-button>
+                    </span>
+                </el-dialog>
+            </el-main>
+        </div>
+    </div>
+
+    <script src="/static/js/vue@2.js"></script>
+    <script src="/static/js/element-ui.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+    <script src="/static/js/staff.js"></script>
+</body>
+</html> 

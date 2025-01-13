@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单管理</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="/static/css/shop.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <div class="site-container">
+            <el-header style="height: 60px; line-height: 60px; background-color: #fff; border-bottom: 1px solid #dcdfe6;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <el-button icon="el-icon-back" @click="goBack">返回</el-button>
+                        <span style="margin-left: 20px">订单管理</span>
+                    </div>
+                    <div>
+                        <span>{{ username }}</span>
+                        <el-button type="text" @click="logout">退出登录</el-button>
+                    </div>
+                </div>
+            </el-header>
+
+            <el-main>
+                <el-tabs v-model="orderTab">
+                    <el-tab-pane label="订单列表" name="list">
+                        <el-row :gutter="20">
+                            <el-col :span="8">
+                                <el-radio-group v-model="orderStatusFilter" @change="handleStatusFilterChange">
+                                    <el-radio-button label="all">全部</el-radio-button>
+                                    <el-radio-button label="delivering">派送中</el-radio-button>
+                                    <el-radio-button label="completed">已送达</el-radio-button>
+                                </el-radio-group>
+                            </el-col>
+                            <el-col :span="16" style="text-align: right;">
+                                <el-button type="primary" @click="showCreateOrderDialog">新建订单</el-button>
+                                <el-button 
+                                    type="success" 
+                                    :disabled="selectedOrders.length === 0"
+                                    @click="startDelivery"
+                                >
+                                    开始派送
+                                </el-button>
+                            </el-col>
+                        </el-row>
+                        
+                        <el-table 
+                            :data="filteredOrders" 
+                            style="margin-top: 20px"
+                            @selection-change="handleOrderSelectionChange"
+                        >
+                            <el-table-column type="selection" width="55"></el-table-column>
+                            <el-table-column label="商品信息">
+                                <template slot-scope="scope">
+                                    <div v-for="item in scope.row.items || []" :key="item.id">
+                                        {{ item.menu_item?.name || '未知商品' }} x{{ item.quantity }}
+                                        <span v-if="item.selected_options && item.selected_options.length">
+                                            ({{ item.selected_options.map(opt => opt.name).join(', ') }})
+                                        </span>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="总价">
+                                <template slot-scope="scope">
+                                    ¥{{ calculateOrderTotal(scope.row) }}
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="客户信息">
+                                <template slot-scope="scope">
+                                    <div>{{ scope.row.customer_name || '未知客户' }}</div>
+                                    <div>{{ scope.row.customer_phone || '无电话' }}</div>
+                                    <div>
+                                        {{ scope.row.building?.community_name || '未知小区' }} 
+                                        {{ scope.row.building?.name || '未知楼栋' }} 
+                                        {{ scope.row.room_number || '未知房号' }}
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="delivery_time" label="配送时间">
+                                <template slot-scope="scope">
+                                    {{ formatDate(scope.row.delivery_time) }}
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="status" label="状态">
+                                <template slot-scope="scope">
+                                    <el-tag :type="getOrderStatusType(scope.row.status)">
+                                        {{ getOrderStatusText(scope.row.status) }}
+                                    </el-tag>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="deliverer" label="配送员"></el-table-column>
+                            <el-table-column label="操作" width="200">
+                                <template slot-scope="scope">
+                                    <el-button 
+                                        type="primary"
+                                        size="small"
+                                        @click="editOrder(scope.row)"
+                                    >
+                                        编辑
+                                    </el-button>
+                                    <el-button 
+                                        v-if="scope.row.status === 'delivering' && scope.row.deliverer === username"
+                                        type="success"
+                                        size="small"
+                                        @click="completeOrder(scope.row)"
+                                    >
+                                        已送达
+                                    </el-button>
+                                    <el-button 
+                                        v-if="scope.row.status === 'delivering' && scope.row.deliverer === username"
+                                        type="danger"
+                                        size="small"
+                                        @click="cancelDelivery(scope.row)"
+                                    >
+                                        取消派送
+                                    </el-button>
+                                    <el-button 
+                                        type="danger"
+                                        size="small"
+                                        @click="deleteOrder(scope.row)"
+                                    >
+                                        删除
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                    <el-tab-pane label="我的派送" name="my_delivery">
+                        <el-table :data="myDeliveries" style="margin-top: 20px">
+                            <el-table-column label="商品信息">
+                                <template slot-scope="scope">
+                                    <div v-for="item in scope.row.items || []" :key="item.id">
+                                        {{ item.menu_item?.name || '未知商品' }} x{{ item.quantity }}
+                                        <span v-if="item.selected_options && item.selected_options.length">
+                                            ({{ item.selected_options.map(opt => opt.name).join(', ') }})
+                                        </span>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="总价">
+                                <template slot-scope="scope">
+                                    ¥{{ calculateOrderTotal(scope.row) }}
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="客户信息">
+                                <template slot-scope="scope">
+                                    <div>{{ scope.row.customer_name || '未知客户' }}</div>
+                                    <div>{{ scope.row.customer_phone || '无电话' }}</div>
+                                    <div>
+                                        {{ scope.row.building?.community_name || '未知小区' }} 
+                                        {{ scope.row.building?.name || '未知楼栋' }} 
+                                        {{ scope.row.room_number || '未知房号' }}
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="delivery_time" label="配送时间">
+                                <template slot-scope="scope">
+                                    {{ formatDate(scope.row.delivery_time) }}
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="status" label="状态">
+                                <template slot-scope="scope">
+                                    <el-tag :type="getOrderStatusType(scope.row.status)">
+                                        {{ getOrderStatusText(scope.row.status) }}
+                                    </el-tag>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="操作" width="200">
+                                <template slot-scope="scope">
+                                    <el-button 
+                                        v-if="scope.row.status === 'delivering'"
+                                        type="success"
+                                        size="small"
+                                        @click="completeOrder(scope.row)"
+                                    >
+                                        已送达
+                                    </el-button>
+                                    <el-button 
+                                        v-if="scope.row.status === 'delivering'"
+                                        type="danger"
+                                        size="small"
+                                        @click="cancelDelivery(scope.row)"
+                                    >
+                                        取消派送
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-tab-pane>
+                </el-tabs>
+
+                <!-- 新建/编辑订单对话框 -->
+                <el-dialog 
+                    :title="orderForm.id ? '编辑订单' : '新建订单'" 
+                    :visible.sync="createOrderDialogVisible"
+                    width="70%" 
+                    :close-on-click-modal="false"
+                >
+                    <el-form :model="orderForm" label-width="100px" size="small">
+                        <el-row :gutter="20">
+                            <!-- 左侧客户信息 -->
+                            <el-col :span="12">
+                                <el-form-item label="客户姓名">
+                                    <el-input v-model="orderForm.customer_name"></el-input>
+                                </el-form-item>
+                                <el-form-item label="房号">
+                                    <el-input v-model="orderForm.room_number" placeholder="请输入房号"></el-input>
+                                </el-form-item>
+                                <el-form-item label="联系电话">
+                                    <el-input v-model="orderForm.customer_phone"></el-input>
+                                </el-form-item>
+                                <el-form-item label="配送地址">
+                                    <el-cascader
+                                        v-model="orderForm.building_id"
+                                        :options="addressOptions"
+                                        :props="{
+                                            value: 'id',
+                                            label: 'name',
+                                            children: 'buildings'
+                                        }"
+                                        placeholder="请选择小区和楼栋"
+                                        style="width: 100%"
+                                    ></el-cascader>
+                                </el-form-item>
+                                <el-form-item label="预约时间">
+                                    <el-date-picker
+                                        v-model="orderForm.delivery_time"
+                                        type="datetime"
+                                        placeholder="选择预约配送时间"
+                                        style="width: 100%"
+                                        :picker-options="{
+                                            disabledDate(time) {
+                                                return time.getTime() < Date.now();
+                                            }
+                                        }"
+                                    ></el-date-picker>
+                                </el-form-item>
+                            </el-col>
+                            
+                            <!-- 右侧商品信息 -->
+                            <el-col :span="12">
+                                <div style="margin-bottom: 10px">
+                                    <el-button type="text" @click="addOrderItem">
+                                        <i class="el-icon-plus"></i> 添加商品
+                                    </el-button>
+                                </div>
+                                
+                                <div v-for="(item, index) in orderForm.items" :key="index" 
+                                     style="border: 1px solid #EBEEF5; border-radius: 4px; padding: 10px; margin-bottom: 10px">
+                                    <el-row :gutter="10">
+                                        <el-col :span="24" style="margin-bottom: 10px">
+                                            <el-select 
+                                                v-model="item.menu_item_id" 
+                                                placeholder="选择商品"
+                                                style="width: 100%"
+                                                @change="handleMenuItemSelect(index)"
+                                            >
+                                                <el-option
+                                                    v-for="menuItem in menuItems"
+                                                    :key="menuItem.id"
+                                                    :label="menuItem.name"
+                                                    :value="menuItem.id"
+                                                >
+                                                    <span>{{ menuItem.name }}</span>
+                                                    <span style="float: right; color: #8492a6; font-size: 13px">
+                                                        ¥{{ menuItem.price }}
+                                                    </span>
+                                                </el-option>
+                                            </el-select>
+                                        </el-col>
+                                        
+                                        <el-col :span="8">
+                                            <el-input-number 
+                                                v-model="item.quantity" 
+                                                :min="1" 
+                                                placeholder="数量"
+                                                style="width: 100%"
+                                                @change="calculateTotal"
+                                            ></el-input-number>
+                                        </el-col>
+                                        
+                                        <el-col :span="14">
+                                            <el-select 
+                                                v-model="item.selected_options" 
+                                                multiple 
+                                                placeholder="选择规格"
+                                                style="width: 100%"
+                                                @change="calculateTotal"
+                                            >
+                                                <el-option
+                                                    v-for="option in getMenuItemOptions(item.menu_item_id)"
+                                                    :key="option.id"
+                                                    :label="`${option.name} (+¥${option.price})`"
+                                                    :value="option.id"
+                                                ></el-option>
+                                            </el-select>
+                                        </el-col>
+                                        
+                                        <el-col :span="2">
+                                            <el-button 
+                                                type="danger" 
+                                                icon="el-icon-delete" 
+                                                circle
+                                                @click="removeOrderItem(index)"
+                                            ></el-button>
+                                        </el-col>
+                                    </el-row>
+                                </div>
+                            </el-col>
+                        </el-row>
+                        
+                        <!-- 底部信息 -->
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-form-item label="备注">
+                                    <el-input 
+                                        type="textarea" 
+                                        v-model="orderForm.note"
+                                        placeholder="请输入备注信息"
+                                    ></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="付款状态">
+                                    <el-switch
+                                        v-model="orderForm.is_paid"
+                                        active-text="已付款"
+                                        inactive-text="未付款"
+                                    ></el-switch>
+                                </el-form-item>
+                                <el-form-item label="派送状态">
+                                    <el-radio-group v-model="orderForm.status">
+                                        <el-radio label="ordered">待派送</el-radio>
+                                        <el-radio label="delivering">派送中</el-radio>
+                                        <el-radio label="completed">已送达</el-radio>
+                                    </el-radio-group>
+                                </el-form-item>
+                                <div style="text-align: right; margin-top: 20px">
+                                    <span style="font-size: 16px; margin-right: 20px">订单总价：</span>
+                                    <span style="color: #f56c6c; font-size: 20px;">¥{{ totalAmount }}</span>
+                                </div>
+                            </el-col>
+                        </el-row>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="createOrderDialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="createOrder">确定</el-button>
+                    </span>
+                </el-dialog>
+            </el-main>
+        </div>
+    </div>
+
+    <script src="/static/js/vue@2.js"></script>
+    <script src="/static/js/element-ui.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+    <script src="/static/js/orders.js"></script>
+</body>
+</html> 
