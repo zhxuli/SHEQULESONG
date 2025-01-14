@@ -147,7 +147,13 @@ var app = new Vue({
             y: 0
         },
         showItemStatsDialog: false,
-        itemStats: {}
+        itemStats: {},
+        totalPendingOrders: 0,
+        totalPendingAmount: 0,
+        totalCompletedOrders: 0,
+        totalCompletedAmount: 0,
+        totalOrders: 0,
+        totalAmount: 0
     },
     computed: {
         filteredOrders() {
@@ -1268,11 +1274,26 @@ var app = new Vue({
             try {
                 const response = await axios.get(`/sites/${this.siteId}/orders/item-stats`);
                 this.itemStats = response.data;
+                this.calculateSummary(); // 计算汇总数据
                 this.showItemStatsDialog = true;
             } catch (error) {
                 console.error('Error fetching item stats:', error);
                 this.$message.error('获取商品统计信息失败');
             }
+        },
+        calculateSummary() {
+            this.totalPendingOrders = 0;
+            this.totalPendingAmount = 0;
+            this.totalCompletedOrders = 0;
+            this.totalCompletedAmount = 0;
+            for (const stats of Object.values(this.itemStats)) {
+                this.totalPendingOrders += stats.pending_orders;
+                this.totalPendingAmount += stats.pending_amount;
+                this.totalCompletedOrders += stats.completed_orders;
+                this.totalCompletedAmount += stats.completed_amount;
+            }
+            this.totalOrders = this.totalPendingOrders + this.totalCompletedOrders;
+            this.totalAmount = (this.totalPendingAmount + this.totalCompletedAmount).toFixed(2);
         }
     },
     async mounted() {
