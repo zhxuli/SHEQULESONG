@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>站点管理</title>
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
-    <link rel="stylesheet" href="/static/css/shop.css?v=1.0.3">
+    <link rel="stylesheet" href="/static/css/shop.css?v=1.0.5">
 </head>
 <body>
     <div id="app" v-cloak>
@@ -264,7 +264,7 @@
 
                         <div class="delivery-list">
                             <div v-for="order in filteredDeliveries" :key="order.id" class="delivery-card" style="background: white; padding: 15px; margin-bottom: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                <div class="order-header">
+                                <div class="order-header">                                    
                                     <div class="address-text">{{order.building?.community_name}} {{order.building?.name}} {{order.room_number}}</div>
                                     <el-tag :type="getOrderStatusType(order.status)" size="small">
                                         {{getOrderStatusText(order.status)}}
@@ -276,7 +276,7 @@
                                         <span class="item-quantity">x{{ item.quantity }}</span>
                                     </div>
                                 </div>
-                                <div class="operation-group" v-if="order.status === 'delivering'">
+                                <div class="operation-group" v-if="order.status === 'delivering' && order.deliverer === username">
                                     <el-button type="success" size="mini" @click="completeOrder(order)">已送达</el-button>
                                     <el-button type="warning" size="mini" @click="cancelDelivery(order)">取消派送</el-button>
                                 </div>
@@ -1127,6 +1127,6 @@
     <script src="/static/js/vue@2.js"></script>
     <script src="/static/js/element-ui.js"></script>
     <script src="/static/js/axios.min.js"></script>
-    <script src="/static/js/shop.js?v=1.1.5"></script>
+    <script src="/static/js/shop.js?v=1.1.6"></script>
 </body>
 </html> 

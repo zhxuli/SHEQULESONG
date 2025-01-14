@@ -121,7 +121,7 @@ body {
 
 /* 操作按钮组 */
 .operation-group {
-    /* position: absolute; */
+    position: absolute;
     display: none;
     right: 10px;
     bottom: 10px;
@@ -1070,7 +1070,7 @@ body {
     font-weight: bold;
 }
 
-.order-card:hover .operation-group , .menu-info:hover .operation-group, .staff-info:hover .operation-group{
+.order-card:hover .operation-group , .menu-info:hover .operation-group, .staff-info:hover .operation-group, .delivery-card:hover .operation-group{
     display: block;
 }
 
