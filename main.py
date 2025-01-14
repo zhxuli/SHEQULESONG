@@ -1,11 +1,12 @@
 from fastapi import FastAPI, WebSocket, Depends, HTTPException, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from tortoise.contrib.fastapi import register_tortoise
+from tortoise.queryset import Q
 from auth import get_current_user, create_access_token, get_password_hash, verify_password
 from schemas import *
 from models import *
 from typing import List, Optional
-from datetime import timedelta
+from datetime import datetime, timedelta
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from settings import TORTOISE_ORM, SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -1071,17 +1072,30 @@ async def get_deliveries(
     if not (staff and PermissionType.DELIVERY in staff.permissions) and site.admin_id != current_user.id:
         raise HTTPException(status_code=403, detail="没有配送权限")
     
-    # 构建查询条件
-    query = {
-        "site_id": site_id,
-        "deliverer": current_user
-    }
-    if status:
-        query["status"] = status
-    
-    orders = await Order.filter(**query).prefetch_related(
-        'building__community', 'items__menu_item'
-    ).order_by('-delivery_time')
+    # 获取今天的开始时间（0点）和结束时间（23:59:59）
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow = today + timedelta(days=1)
+
+    # 分别查询不同状态的订单
+    pending_orders = await Order.filter(
+        site_id=site_id,
+        status='ordered'
+    ).prefetch_related('items__menu_item')
+
+    delivering_orders = await Order.filter(
+        site_id=site_id,
+        status='delivering'
+    ).prefetch_related('items__menu_item')
+
+    completed_orders = await Order.filter(
+        site_id=site_id,
+        status='completed',
+        delivery_time__gte=today,
+        delivery_time__lt=tomorrow
+    ).prefetch_related('items__menu_item')
+
+    # 合并所有订单
+    orders = pending_orders + delivering_orders + completed_orders
     
     return [
         {
@@ -1578,3 +1592,58 @@ async def delete_site(
     # 删除站点（关联的数据会自动删除）
     await site.delete()
     return {"message": "站点删除成功"}
+
+@app.get("/sites/{site_id}/orders/item-stats")
+async def get_item_order_stats(
+    site_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    # 验证用户是否是该站点的成员
+    staff = await StaffMember.get_or_none(user=current_user, site_id=site_id)
+    site = await Site.get_or_none(id=site_id)
+    
+    if not site:
+        raise HTTPException(status_code=404, detail="站点不存在")
+    
+    if not (staff and PermissionType.ORDER in staff.permissions) and site.admin_id != current_user.id:
+        raise HTTPException(status_code=403, detail="您没有权限访问该站点")
+
+    # 获取今天的开始时间（0点）和结束时间（23:59:59）
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow = today + timedelta(days=1)
+
+    # 查询未派送的订单（不限时间）和当天已派送的订单
+    orders = await Order.filter(
+        Q(site_id=site_id, status='ordered') |  # 所有未派送订单
+        Q(site_id=site_id, status='delivering') |  # 所有派送中订单
+        Q(site_id=site_id, status='completed',  # 当天已完成订单
+          delivery_time__gte=today,
+          delivery_time__lt=tomorrow)
+    ).prefetch_related('items__menu_item')
+
+    item_stats = {}
+    for order in orders:
+        for item in order.items:
+            item_name = item.menu_item.name
+            if item_name not in item_stats:
+                item_stats[item_name] = {
+                    "pending_orders": 0,
+                    "delivering_orders": 0,
+                    "completed_orders": 0,
+                    "pending_amount": 0.0,
+                    "delivering_amount": 0.0,
+                    "completed_amount": 0.0
+                }
+            
+            # 根据订单状态累加到对应的统计中 因为item.pirce里面已经是计算过总价了,所以不需要再乘以数量
+            if order.status == 'ordered':
+                item_stats[item_name]["pending_orders"] += item.quantity
+                item_stats[item_name]["pending_amount"] += float(item.price)
+            elif order.status == 'delivering':
+                item_stats[item_name]["delivering_orders"] += item.quantity
+                item_stats[item_name]["delivering_amount"] += float(item.price)
+            elif order.status == 'completed':
+                item_stats[item_name]["completed_orders"] += item.quantity
+                item_stats[item_name]["completed_amount"] += float(item.price)
+
+    return item_stats
